@@ -17,10 +17,23 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundColor": "#0a0a0a"
-      }
+      },
+      "permissions": [
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE"
+      ]
     },
     "plugins": [
-      "expo-dev-client"
+      "expo-dev-client",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Permitir acceso para escanear tu música.",
+          "savePhotosPermission": "Permitir guardar archivos.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      "expo-sqlite"
     ]
   }
 }
