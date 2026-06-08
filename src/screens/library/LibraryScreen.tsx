@@ -1,82 +1,138 @@
-import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { useEffect, useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
+import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+
 import { getAllSongs } from '../../services/db/songsRepository';
+import { metadataService } from '../../services/metadata/metadataBackgroundService';
 import type { Song } from '../../types/song';
 
 export default function LibraryScreen() {
   const [songs, setSongs] = useState<Song[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [metaProgress, setMetaProgress] = useState({ current: 0, total: 0 });
 
-  const loadSongs = useCallback(async () => {
+  const load = useCallback(async () => {
     const data = await getAllSongs();
     setSongs(data);
+    setLoading(false);
   }, []);
 
-  // Recarga cada vez que entras a esta tab
+  // Cargar al montar y al volver al tab
   useFocusEffect(
     useCallback(() => {
-      loadSongs();
-    }, [loadSongs])
+      load();
+    }, [load])
   );
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadSongs();
-    setRefreshing(false);
-  };
+  // Suscribirse al progreso del background → refrescar lista cuando avance
+  useEffect(() => {
+    const unsubscribe = metadataService.subscribe((current, total) => {
+      setMetaProgress({ current, total });
+      // Refrescar lista cuando termina cada canción (puedes hacerlo cada N para optimizar)
+      if (total > 0) load();
+    });
+    return unsubscribe;
+  }, [load]);
 
-  if (songs.length === 0) {
-    return (
-      <View style={styles.empty}>
-        <Text style={styles.emptyEmoji}>🎵</Text>
-        <Text style={styles.emptyTitle}>Tu biblioteca está vacía</Text>
-        <Text style={styles.emptyHint}>Ve a Ajustes y pulsa "Escanear biblioteca"</Text>
-      </View>
-    );
-  }
+  const isProcessingMeta = metaProgress.total > 0 && metaProgress.current < metaProgress.total;
 
-  return (
-    <FlatList
-      style={styles.list}
-      data={songs}
-      keyExtractor={(item) => item.id.toString()}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1db954" />}
-      ListHeaderComponent={
-        <Text style={styles.counter}>{songs.length} canciones</Text>
-      }
-      renderItem={({ item }) => (
-        <View style={styles.item}>
-          <Text style={styles.songTitle} numberOfLines={1}>{item.title}</Text>
-          <Text style={styles.songMeta} numberOfLines={1}>
-            {item.folder ?? 'Sin carpeta'} • {formatDuration(item.duration_ms)}
-          </Text>
+  const renderItem = ({ item }: { item: Song }) => (
+    <View style={styles.row}>
+      {item.artwork_uri ? (
+        <Image
+          source={{ uri: item.artwork_uri }}
+          style={styles.artwork}
+          contentFit="cover"
+          transition={150}
+        />
+      ) : (
+        <View style={[styles.artwork, styles.artworkPlaceholder]}>
+          <Ionicons name="musical-note" size={22} color="#666" />
         </View>
       )}
-    />
+      <View style={styles.info}>
+        <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+        <Text style={styles.subtitle} numberOfLines={1}>
+          {item.artist ?? 'Desconocido'}
+        </Text>
+      </View>
+    </View>
   );
-}
 
-function formatDuration(ms: number): string {
-  const totalSec = Math.floor(ms / 1000);
-  const min = Math.floor(totalSec / 60);
-  const sec = totalSec % 60;
-  return `${min}:${sec.toString().padStart(2, '0')}`;
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>📚 Biblioteca</Text>
+        {isProcessingMeta && (
+          <View style={styles.spinnerWrap}>
+            <ActivityIndicator size="small" color="#1db954" />
+            <Text style={styles.spinnerText}>
+              {metaProgress.current}/{metaProgress.total}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {loading ? (
+        <ActivityIndicator color="#1db954" style={{ marginTop: 40 }} />
+      ) : songs.length === 0 ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyText}>
+            No hay canciones. Ve a Ajustes → Escanear biblioteca.
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={songs}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderItem}
+          refreshControl={
+            <RefreshControl
+              refreshing={false}
+              onRefresh={load}
+              tintColor="#1db954"
+            />
+          }
+        />
+      )}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  list: { flex: 1, backgroundColor: '#0a0a0a' },
-  counter: { color: '#888', padding: 16, fontSize: 14 },
-  item: {
+  container: { flex: 1, backgroundColor: '#0a0a0a' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1a1a1a',
+    paddingTop: 16,
+    paddingBottom: 12,
   },
-  songTitle: { color: '#fff', fontSize: 16, fontWeight: '500' },
-  songMeta: { color: '#888', fontSize: 13, marginTop: 4 },
-  empty: { flex: 1, backgroundColor: '#0a0a0a', justifyContent: 'center', alignItems: 'center', padding: 40 },
-  emptyEmoji: { fontSize: 64, marginBottom: 16 },
-  emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '600', marginBottom: 8 },
-  emptyHint: { color: '#888', fontSize: 14, textAlign: 'center' },
+  headerTitle: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
+  spinnerWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  spinnerText: { color: '#1db954', fontSize: 12 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 12,
+  },
+  artwork: { width: 48, height: 48, borderRadius: 6, backgroundColor: '#222' },
+  artworkPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  info: { flex: 1 },
+  title: { color: '#fff', fontSize: 15, fontWeight: '500' },
+  subtitle: { color: '#888', fontSize: 13, marginTop: 2 },
+  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  emptyText: { color: '#888', textAlign: 'center' },
 });

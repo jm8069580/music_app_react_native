@@ -33,7 +33,8 @@
           "isAccessMediaLocationEnabled": false
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-image"
     ]
   }
 }

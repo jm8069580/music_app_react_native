@@ -66,6 +66,7 @@ export async function scanAudioLibrary(
       album: null,
       duration_ms: Math.round(durationSec * 1000),
       artwork_uri: null,
+      metadata_extracted: 0,
       folder,
       added_at: now,
     });
@@ -73,6 +74,12 @@ export async function scanAudioLibrary(
     inserted++;
     onProgress?.(i + 1, mp3Assets.length);
   }
+
+  import('../metadata/metadataBackgroundService').then(({ metadataService }) => {
+  metadataService.start();
+});
+
+return { totalFound: mp3Assets.length, inserted };
 
   return { totalFound: mp3Assets.length, inserted };
 }
