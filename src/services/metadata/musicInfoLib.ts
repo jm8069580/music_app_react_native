@@ -1,4 +1,6 @@
 // Fork de expo-music-info-2@2.0.0 adaptado a expo-file-system/legacy (SDK 54+)
+// La API legacy es necesaria porque puede leer archivos externos
+// (/storage/emulated/0/...); la nueva API File rechaza open() en esas rutas.
 // Original: https://github.com/dmitrijkiltau/expo-music-info-2 (MIT)
 
 import * as FileSystem from 'expo-file-system/legacy';
@@ -99,8 +101,14 @@ class Loader {
       position: this.filePosition,
       length: BUFFER_SIZE,
     });
-    this.buffer.setData(Uint8Array.from(decode(data), (c) => c.charCodeAt(0)));
-    this.filePosition += BUFFER_SIZE;
+    // Algunos backends devuelven el base64 con saltos de línea; quitarlos
+    // evita que el decode desalinee los bytes.
+    const clean = data.replace(/[^A-Za-z0-9+/=]/g, '');
+    const bytes = Uint8Array.from(decode(clean), (c) => c.charCodeAt(0));
+    this.buffer.setData(bytes);
+    // Avanzar por los bytes realmente leídos, no por BUFFER_SIZE: si el
+    // backend devuelve menos bytes, esto evita desalinear lecturas grandes.
+    this.filePosition += bytes.length;
   }
 
   private async process() {
@@ -146,6 +154,26 @@ class Loader {
     return chunk;
   }
 
+  // Lee de a 2 bytes hasta el terminador UTF-16 (0x00 0x00).
+  private async readUntilDoubleNull(): Promise<number[]> {
+    const chunk: number[] = [];
+    while (true) {
+      if (this.buffer.finished()) {
+        if (this.filePosition >= this.dataSize) { this.finished = true; break; }
+        await this.loadFileToBuffer();
+      }
+      const b1 = this.buffer.getByte();
+      if (this.buffer.finished()) {
+        if (this.filePosition >= this.dataSize) { chunk.push(b1); this.finished = true; break; }
+        await this.loadFileToBuffer();
+      }
+      const b2 = this.buffer.getByte();
+      chunk.push(b1, b2);
+      if (b1 === 0 && b2 === 0) break;
+    }
+    return chunk;
+  }
+
   private async processHeader() {
     let chunk = await this.read(3);
     if (this.bytesToString(chunk) !== ID3_TOKEN) throw new InvalidFileException();
@@ -183,16 +211,29 @@ class Loader {
   }
 
   private async processPictureFrame(frameSize: number) {
-    await this.skip(1);
-    let remaining = frameSize - 1;
+    // <encoding $xx> <MIME $00> <picture type $xx> <description (term)> <picture data>
+    const encChunk = await this.read(1);
+    const encoding = encChunk[0];
+    let remaining = frameSize - encChunk.length;
+
+    // MIME: siempre ISO-8859-1, terminado en un único 0x00.
     let chunk = await this.readUntilEnd();
     remaining -= chunk.length;
     const mimeType = this.bytesToString(chunk);
-    await this.skip(1);
-    remaining -= 1;
-    chunk = await this.readUntilEnd();
+
+    // Tipo de imagen (1 byte).
+    const picType = await this.read(1);
+    remaining -= picType.length;
+
+    // Descripción: el terminador depende del encoding del frame.
+    //   0 = ISO-8859-1, 3 = UTF-8  -> 0x00
+    //   1 = UTF-16 (BOM), 2 = UTF-16BE -> 0x00 0x00
+    const isUtf16 = encoding === 1 || encoding === 2;
+    chunk = isUtf16 ? await this.readUntilDoubleNull() : await this.readUntilEnd();
     remaining -= chunk.length;
     const description = this.bytesToString(chunk);
+
+    if (remaining < 0) remaining = 0;
     const pictureData = await this.read(remaining);
     this.frames[PICTURE_TOKEN] = {
       description,

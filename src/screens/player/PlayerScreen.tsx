@@ -1,0 +1,94 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import { usePlayerStore } from '../../services/player/playerStore';
+import Slider from '@react-native-community/slider';
+import { Ionicons } from '@expo/vector-icons';
+
+const { height } = Dimensions.get('window');
+
+export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const translateY = useRef(new Animated.Value(height)).current;
+  useEffect(() => {
+    Animated.timing(translateY, { toValue: 0, duration: 300, useNativeDriver: true }).start();
+  }, []);
+
+  const currentSong = usePlayerStore((s) => s.currentSong);
+  const position = usePlayerStore((s) => s.positionMillis);
+  const duration = usePlayerStore((s) => s.durationMillis);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const play = usePlayerStore((s) => s.play);
+  const pause = usePlayerStore((s) => s.pause);
+  const next = usePlayerStore((s) => s.next);
+  const previous = usePlayerStore((s) => s.previous);
+  const seekTo = usePlayerStore((s) => s.seekTo);
+
+  if (!currentSong) {
+    return null;
+  }
+
+  const artwork = currentSong.artwork_uri ? { uri: currentSong.artwork_uri } : require('../../../assets/default_artwork.png');
+
+  const format = (ms: number) => {
+    const sec = Math.floor((ms || 0) / 1000);
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <Animated.View style={[styles.container, { transform: [{ translateY }] }]}>
+      <TouchableOpacity style={styles.close} onPress={() => navigation.goBack()}>
+        <Ionicons name="chevron-down" size={28} color="#fff" />
+      </TouchableOpacity>
+
+      <Image source={artwork} style={styles.art} />
+      <Text style={styles.title}>{currentSong.title}</Text>
+      <Text style={styles.artist}>{currentSong.artist}</Text>
+
+      <Slider
+        style={{ width: '90%', marginTop: 24 }}
+        value={position}
+        minimumValue={0}
+        maximumValue={Math.max(duration, 1)}
+        minimumTrackTintColor="#1DB954"
+        maximumTrackTintColor="#444"
+        onSlidingComplete={(val) => seekTo(Math.floor(val))}
+      />
+      <View style={styles.times}>
+        <Text style={styles.timeText}>{format(position)}</Text>
+        <Text style={styles.timeText}>{format(duration)}</Text>
+      </View>
+
+      <View style={styles.controls}>
+        <TouchableOpacity onPress={() => previous()}>
+          <Ionicons name="play-skip-back" size={36} color="#fff" />
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => (isPlaying ? pause() : play())} style={{ marginHorizontal: 36 }}>
+          <Ionicons name={isPlaying ? 'pause-circle' : 'play-circle'} size={64} color="#fff" />
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => next()}>
+          <Ionicons name="play-skip-forward" size={36} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    left: 0, right: 0, bottom: 0, top: 0,
+    backgroundColor: '#0b0b0b',
+    alignItems: 'center',
+    paddingTop: 48,
+  },
+  close: { position: 'absolute', left: 12, top: 40 },
+  art: { width: 280, height: 280, borderRadius: 8, backgroundColor: '#222' },
+  title: { color: '#fff', fontSize: 20, marginTop: 18 },
+  artist: { color: '#bbb', marginTop: 6 },
+  times: { width: '90%', flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+  timeText: { color: '#888' },
+  controls: { flexDirection: 'row', alignItems: 'center', marginTop: 24 },
+});

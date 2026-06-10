@@ -6,13 +6,15 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  Pressable,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { getAllSongs } from '../../services/db/songsRepository';
 import { metadataService } from '../../services/metadata/metadataBackgroundService';
+import { usePlayerStore } from '../../services/player/playerStore';
 import type { Song } from '../../types/song';
 
 export default function LibraryScreen() {
@@ -43,10 +45,17 @@ export default function LibraryScreen() {
     return unsubscribe;
   }, [load]);
 
+  const navigation = useNavigation<any>();
+
+  const loadAndPlayFromIndex = async (index: number) => {
+    await usePlayerStore.getState().loadQueue(songs, index);
+    navigation.navigate('PlayerModal' as never);
+  };
+
   const isProcessingMeta = metaProgress.total > 0 && metaProgress.current < metaProgress.total;
 
-  const renderItem = ({ item }: { item: Song }) => (
-    <View style={styles.row}>
+  const renderItem = ({ item, index }: { item: Song; index: number }) => (
+    <Pressable style={styles.row} onPress={() => loadAndPlayFromIndex(index)}>
       {item.artwork_uri ? (
         <Image
           source={{ uri: item.artwork_uri }}
@@ -65,7 +74,7 @@ export default function LibraryScreen() {
           {item.artist ?? 'Desconocido'}
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 
   return (

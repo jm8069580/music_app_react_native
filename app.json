@@ -34,7 +34,13 @@
         }
       ],
       "expo-sqlite",
-      "expo-image"
+      "expo-image",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false
+        }
+      ]
     ]
   }
 }
