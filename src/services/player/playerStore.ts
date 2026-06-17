@@ -10,95 +10,76 @@ type PlayerState = {
   positionMillis: number;
   durationMillis: number;
   loading: boolean;
+  ready: boolean;
+  init: () => Promise<void>;
   loadQueue: (songs: Song[], startIndex?: number) => Promise<void>;
-  play: () => Promise<void>;
-  pause: () => Promise<void>;
-  togglePlay: () => Promise<void>;
-  next: () => Promise<void>;
-  previous: () => Promise<void>;
-  seekTo: (ms: number) => Promise<void>;
+  play: () => void;
+  pause: () => void;
+  togglePlay: () => void;
+  next: () => void;
+  previous: () => void;
+  seekTo: (ms: number) => void;
   setLoading: (v: boolean) => void;
 };
 
-export const usePlayerStore = create<PlayerState>((set, get) => {
-  // subscribe to playerService status updates
-  playerService.setStatusUpdateCallback((status) => {
-    set({
-      isPlaying: !!status.isPlaying,
-      positionMillis: status.positionMillis ?? 0,
-      durationMillis: status.durationMillis ?? 0,
-    });
+export const usePlayerStore = create<PlayerState>((set, get) => ({
+  queue: [],
+  currentIndex: null,
+  currentSong: null,
+  isPlaying: false,
+  positionMillis: 0,
+  durationMillis: 0,
+  loading: false,
+  ready: false,
 
-    if (status.didJustFinish) {
-      // auto-advance
-      get().next();
-    }
-  });
+  setLoading: (v) => set({ loading: v }),
 
-  return {
-    queue: [],
-    currentIndex: null,
-    currentSong: null,
-    isPlaying: false,
-    positionMillis: 0,
-    durationMillis: 0,
-    loading: false,
-
-    setLoading: (v: any) => set({ loading: v }),
-
-    loadQueue: async (songs: Song[], startIndex = 0) => {
-      set({ loading: true });
-      await playerService.loadQueue(songs, startIndex, (idx) => {
+  /**
+   * Inicializa el player nativo y conecta los eventos al store.
+   * Llamar una vez al arrancar la app (en foreground).
+   */
+  init: async () => {
+    if (get().ready) return;
+    await playerService.setup({
+      onIsPlayingChange: (playing) => set({ isPlaying: playing }),
+      onProgress: (positionMillis, durationMillis) =>
+        set({ positionMillis, durationMillis }),
+      onTrackChange: (index) => {
+        const { queue } = get();
         set({
-          queue: songs,
-          currentIndex: idx,
-          currentSong: songs[idx] ?? null,
+          currentIndex: index,
+          currentSong: queue[index] ?? null,
           loading: false,
         });
-      });
-    },
+      },
+    });
+    set({ ready: true });
+  },
 
-    play: async () => {
-      await playerService.play();
-    },
+  loadQueue: async (songs, startIndex = 0) => {
+    set({ loading: true, queue: songs });
+    await playerService.loadQueue(songs, startIndex);
+    set({
+      currentIndex: startIndex,
+      currentSong: songs[startIndex] ?? null,
+      loading: false,
+    });
+  },
 
-    pause: async () => {
-      await playerService.pause();
-    },
+  play: () => playerService.play(),
 
-    togglePlay: async () => {
-      const { isPlaying } = get();
-      if (isPlaying) await get().pause();
-      else await get().play();
-    },
+  pause: () => playerService.pause(),
 
-    next: async () => {
-      const { queue, currentIndex } = get();
-      if (queue.length === 0) return;
-      const nextIndex = (currentIndex ?? 0) + 1;
-      if (nextIndex < queue.length) {
-        set({ loading: true });
-        await playerService.loadTrackAtIndex(queue, nextIndex, (idx) => {
-          set({ currentIndex: idx, currentSong: queue[idx], loading: false });
-        });
-      } else {
-        // reached end: pause
-        await get().pause();
-      }
-    },
+  togglePlay: () => {
+    if (get().isPlaying) playerService.pause();
+    else playerService.play();
+  },
 
-    previous: async () => {
-      const { queue, currentIndex } = get();
-      if (queue.length === 0) return;
-      const prevIndex = Math.max(0, (currentIndex ?? 0) - 1);
-      set({ loading: true });
-      await playerService.loadTrackAtIndex(queue, prevIndex, (idx) => {
-        set({ currentIndex: idx, currentSong: queue[idx], loading: false });
-      });
-    },
+  // La navegación de cola y el auto-avance al terminar son nativos:
+  // el índice/canción se actualizan vía el evento MediaItemTransition.
+  next: () => playerService.skipToNext(),
 
-    seekTo: async (ms: number) => {
-      await playerService.seekTo(ms);
-    },
-  };
-});
+  previous: () => playerService.skipToPrevious(),
+
+  seekTo: (ms) => playerService.seekToMs(ms),
+}));

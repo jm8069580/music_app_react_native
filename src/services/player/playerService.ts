@@ -1,97 +1,118 @@
-import { createAudioPlayer, setAudioModeAsync, AudioPlayer, AudioStatus } from 'expo-audio';
+import TrackPlayer, {
+  Event,
+  PlayerCommand,
+  type MediaItem,
+} from '@rntp/player';
 import type { Song } from '../../types/song';
 
-type StatusCallback = (status: {
-  isPlaying?: boolean;
-  positionMillis?: number;
-  durationMillis?: number;
-  didJustFinish?: boolean;
-}) => void;
+/**
+ * Callbacks que el store registra para reflejar el estado nativo del player.
+ * RNTP maneja la cola, el auto-avance y los controles de lockscreen/notificación
+ * de forma nativa, así que aquí solo "escuchamos" y reenviamos al store.
+ */
+export type PlayerEvents = {
+  onIsPlayingChange?: (playing: boolean) => void;
+  onProgress?: (positionMs: number, durationMs: number) => void;
+  onTrackChange?: (index: number) => void;
+};
+
+function songToMediaItem(song: Song): MediaItem {
+  return {
+    mediaId: String(song.id),
+    url: song.uri,
+    title: song.title,
+    artist: song.artist ?? undefined,
+    albumTitle: song.album ?? undefined,
+    artworkUrl: song.artwork_uri ?? undefined,
+    duration: song.duration_ms ? song.duration_ms / 1000 : undefined,
+  };
+}
 
 class PlayerService {
-  private player: AudioPlayer | null = null;
-  private statusSub: { remove: () => void } | null = null;
-  private statusCb: StatusCallback = () => {};
-  private currentQueue: Song[] = [];
-  private currentIndex: number = 0;
+  private isSetup = false;
+  private subs: { remove: () => void }[] = [];
 
-  constructor() {
-    setAudioModeAsync({
-      playsInSilentMode: true,
-      shouldPlayInBackground: false,
-    }).catch(() => {});
-  }
+  /**
+   * Inicializa el player nativo (una sola vez, en foreground en Android) y
+   * suscribe los eventos. Idempotente: setupPlayer() lanza si se llama dos veces.
+   */
+  async setup(events: PlayerEvents): Promise<void> {
+    if (this.isSetup) return;
 
-  setStatusUpdateCallback(cb: StatusCallback) {
-    this.statusCb = cb;
-  }
+    try {
+      TrackPlayer.setupPlayer({
+        contentType: 'music',
+        handleAudioBecomingNoisy: true,
+        android: {
+          // Mantiene la CPU despierta para reproducción de archivos locales.
+          wakeMode: 'local',
+        },
+      });
+    } catch {
+      // Ya estaba inicializado (p. ej. tras un fast-refresh): seguimos.
+    }
+    this.isSetup = true;
 
-  private onStatus(status: AudioStatus) {
-    if (!status || !status.isLoaded) return;
-    this.statusCb({
-      isPlaying: status.playing,
-      positionMillis: Math.round((status.currentTime ?? 0) * 1000),
-      durationMillis: Math.round((status.duration ?? 0) * 1000),
-      didJustFinish: status.didJustFinish ?? false,
+    // Controles remotos (lockscreen / notificación / auriculares). 'native'
+    // los resuelve sin pasar por JS, así que funcionan en background.
+    TrackPlayer.setCommands({
+      capabilities: [
+        PlayerCommand.PlayPause,
+        PlayerCommand.Next,
+        PlayerCommand.Previous,
+        PlayerCommand.Seek,
+      ],
+      handling: 'native',
     });
-  }
 
-  async unloadCurrent() {
-    if (this.statusSub) {
-      this.statusSub.remove();
-      this.statusSub = null;
-    }
-    if (this.player) {
-      try {
-        this.player.remove();
-      } catch {}
-      this.player = null;
-    }
-  }
-
-  async loadQueue(queue: Song[], startIndex: number, onLoaded: (index: number) => void) {
-    this.currentQueue = queue;
-    this.currentIndex = startIndex;
-    await this.loadTrack(this.currentQueue[this.currentIndex]);
-    onLoaded(this.currentIndex);
-  }
-
-  async loadTrackAtIndex(queue: Song[], index: number, onLoaded: (index: number) => void) {
-    this.currentQueue = queue;
-    this.currentIndex = index;
-    await this.loadTrack(this.currentQueue[this.currentIndex]);
-    onLoaded(this.currentIndex);
-  }
-
-  private async loadTrack(song: Song) {
-    await this.unloadCurrent();
-    const player = createAudioPlayer({ uri: song.uri });
-    this.player = player;
-    this.statusSub = player.addListener('playbackStatusUpdate', (status: AudioStatus) =>
-      this.onStatus(status)
+    this.subs.push(
+      TrackPlayer.addEventListener(Event.IsPlayingChanged, ({ playing }) => {
+        events.onIsPlayingChange?.(playing);
+      }),
+      TrackPlayer.addEventListener(
+        Event.PlaybackProgressUpdated,
+        ({ position, duration }) => {
+          events.onProgress?.(
+            Math.round(position * 1000),
+            Math.round(duration * 1000)
+          );
+        }
+      ),
+      // Cubre tanto el next/previous manual como el auto-avance nativo al
+      // terminar una pista.
+      TrackPlayer.addEventListener(Event.MediaItemTransition, ({ index }) => {
+        events.onTrackChange?.(index);
+      })
     );
-    player.play();
   }
 
-  async play() {
-    if (!this.player) return;
-    try {
-      this.player.play();
-    } catch {}
+  async loadQueue(songs: Song[], startIndex: number): Promise<void> {
+    TrackPlayer.setMediaItems(songs.map(songToMediaItem), startIndex);
+    TrackPlayer.play();
   }
 
-  async pause() {
-    if (!this.player) return;
-    try {
-      this.player.pause();
-    } catch {}
+  play() {
+    TrackPlayer.play();
   }
 
-  async seekTo(ms: number) {
-    if (!this.player) return;
-    try {
-      await this.player.seekTo(ms / 1000);
-    } catch {}
+  pause() {
+    TrackPlayer.pause();
+  }
+
+  skipToNext() {
+    TrackPlayer.skipToNext();
+  }
+
+  skipToPrevious() {
+    TrackPlayer.skipToPrevious();
+  }
+
+  skipToIndex(index: number) {
+    TrackPlayer.skipToIndex(index);
+  }
+
+  seekToMs(ms: number) {
+    TrackPlayer.seekTo(ms / 1000);
   }
 }
 
