@@ -43,15 +43,28 @@ class MetadataBackgroundService {
       this.current = 0;
       this.emit();
 
-      for (const song of pending) {
-        if (this.cancelled) break;
-
-        const update = await extractMetadata(song.id, song.uri);
-        await updateSongMetadata(song.id, update);
-
-        this.current++;
-        this.emit();
-      }
+      // La extracción es I/O-bound (leer el archivo en chunks), así que
+      // procesar varias canciones a la vez solapa esperas y acelera bastante.
+      const CONCURRENCY = 4;
+      let next = 0;
+      const worker = async () => {
+        while (!this.cancelled) {
+          const i = next++;
+          if (i >= pending.length) break;
+          const song = pending[i];
+          try {
+            const update = await extractMetadata(song.id, song.uri);
+            await updateSongMetadata(song.id, update);
+          } catch {
+            // Una canción que falle no debe frenar al resto.
+          }
+          this.current++;
+          this.emit();
+        }
+      };
+      await Promise.all(
+        Array.from({ length: Math.min(CONCURRENCY, pending.length) }, worker)
+      );
     } catch (err) {
       console.warn('[metadataBackgroundService] error:', err);
     } finally {

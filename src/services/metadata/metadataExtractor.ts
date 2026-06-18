@@ -9,7 +9,6 @@ export async function extractMetadata(
     const update: SongMetadataUpdate = {};
 
     try {
-        console.log('[extractMetadata] usando lib LOCAL para:', uri);
         const info = await getMusicInfoAsync(uri, {
             title: true,
             artist: true,
