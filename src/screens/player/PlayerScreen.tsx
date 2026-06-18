@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Animated, Dimensions } from 'react-native';
 import { usePlayerStore } from '../../services/player/playerStore';
+import { useProgress, useIsPlaying } from '@rntp/player';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -13,9 +14,10 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, []);
 
   const currentSong = usePlayerStore((s) => s.currentSong);
-  const position = usePlayerStore((s) => s.positionMillis);
-  const duration = usePlayerStore((s) => s.durationMillis);
-  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  // Progreso y estado de reproducción vía hooks de RNTP v5 (en segundos),
+  // que son la fuente fiable; el bridge por eventos no emitía progreso.
+  const { position, duration } = useProgress();
+  const isPlaying = useIsPlaying();
   const play = usePlayerStore((s) => s.play);
   const pause = usePlayerStore((s) => s.pause);
   const next = usePlayerStore((s) => s.next);
@@ -28,10 +30,10 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const artwork = currentSong.artwork_uri ? { uri: currentSong.artwork_uri } : require('../../../assets/default_artwork.png');
 
-  const format = (ms: number) => {
-    const sec = Math.floor((ms || 0) / 1000);
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
+  const format = (sec: number) => {
+    const total = Math.floor(sec || 0);
+    const m = Math.floor(total / 60);
+    const s = total % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
@@ -52,7 +54,7 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         maximumValue={Math.max(duration, 1)}
         minimumTrackTintColor="#1DB954"
         maximumTrackTintColor="#444"
-        onSlidingComplete={(val) => seekTo(Math.floor(val))}
+        onSlidingComplete={(val) => seekTo(Math.round(val * 1000))}
       />
       <View style={styles.times}>
         <Text style={styles.timeText}>{format(position)}</Text>
