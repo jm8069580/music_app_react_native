@@ -1,12 +1,21 @@
 import * as SQLite from 'expo-sqlite';
 
-let dbInstance: SQLite.SQLiteDatabase | null = null;
+// Memoizamos la PROMESA (no la instancia ya resuelta) para que la apertura y
+// las migraciones ocurran una sola vez aunque varios consumidores llamen a
+// getDatabase() en el mismo tick (favoritos + metadatos + scanner al arrancar).
+// Si no, se abren varias conexiones en paralelo y prepareAsync puede ejecutarse
+// sobre un handle nativo nulo → NullPointerException.
+let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
-export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
-  if (dbInstance) return dbInstance;
-  dbInstance = await SQLite.openDatabaseAsync('musicapp.db');
-  await runMigrations(dbInstance);
-  return dbInstance;
+export function getDatabase(): Promise<SQLite.SQLiteDatabase> {
+  if (!dbPromise) {
+    dbPromise = (async () => {
+      const db = await SQLite.openDatabaseAsync('musicapp.db');
+      await runMigrations(db);
+      return db;
+    })();
+  }
+  return dbPromise;
 }
 
 async function runMigrations(db: SQLite.SQLiteDatabase) {
