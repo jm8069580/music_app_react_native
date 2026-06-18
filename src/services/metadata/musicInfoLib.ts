@@ -205,9 +205,11 @@ class Loader {
   }
 
   private async processTextFrame(frameID: string, frameSize: number) {
-    await this.skip(1);
+    // 1er byte del frame = encoding del texto; el resto son los datos.
+    const encChunk = await this.read(1);
+    const encoding = encChunk[0];
     const chunk = await this.read(frameSize - 1);
-    this.frames[frameID] = this.bytesToString(chunk);
+    this.frames[frameID] = this.decodeText(chunk, encoding);
   }
 
   private async processPictureFrame(frameSize: number) {
@@ -231,7 +233,7 @@ class Loader {
     const isUtf16 = encoding === 1 || encoding === 2;
     chunk = isUtf16 ? await this.readUntilDoubleNull() : await this.readUntilEnd();
     remaining -= chunk.length;
-    const description = this.bytesToString(chunk);
+    const description = this.decodeText(chunk, encoding);
 
     if (remaining < 0) remaining = 0;
     const pictureData = await this.read(remaining);
@@ -246,6 +248,83 @@ class Loader {
     for (let i = 0; i < bytes.length; i++) if (bytes[i] >= 32 && bytes[i] <= 126) s += String.fromCharCode(bytes[i]);
     return s;
   }
+
+  /**
+   * Decodifica los bytes de un frame de texto ID3 según su byte de encoding:
+   *   0 = ISO-8859-1 (Latin-1)   1 = UTF-16 con BOM
+   *   2 = UTF-16BE sin BOM       3 = UTF-8
+   * Antes se filtraba a ASCII 32-126, lo que destruía acentos y todo UTF-16/UTF-8.
+   */
+  private decodeText(bytes: number[], encoding: number): string {
+    let s: string;
+    switch (encoding) {
+      case 1: s = this.decodeUtf16(bytes, true); break;   // BOM detecta el endianness
+      case 2: s = this.decodeUtf16(bytes, false); break;  // UTF-16BE sin BOM
+      case 3: s = this.decodeUtf8(bytes); break;
+      case 0:
+      default: s = this.decodeLatin1(bytes); break;
+    }
+    // Quita el terminador nulo final y espacios sobrantes.
+    return s.replace(/ +$/, '').trim();
+  }
+
+  private decodeLatin1(bytes: number[]): string {
+    let s = '';
+    for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return s;
+  }
+
+  private decodeUtf16(bytes: number[], hasBom: boolean): string {
+    let i = 0;
+    let littleEndian = false; // UTF-16BE por defecto (encoding 2)
+    if (hasBom && bytes.length >= 2) {
+      if (bytes[0] === 0xff && bytes[1] === 0xfe) { littleEndian = true; i = 2; }
+      else if (bytes[0] === 0xfe && bytes[1] === 0xff) { littleEndian = false; i = 2; }
+      else { littleEndian = true; } // sin BOM válido: asumir LE (lo más común)
+    }
+    let s = '';
+    for (; i + 1 < bytes.length; i += 2) {
+      const code = littleEndian
+        ? bytes[i] | (bytes[i + 1] << 8)
+        : (bytes[i] << 8) | bytes[i + 1];
+      if (code === 0) break; // terminador 0x0000
+      s += String.fromCharCode(code);
+    }
+    return s;
+  }
+
+  private decodeUtf8(bytes: number[]): string {
+    let s = '';
+    let i = 0;
+    while (i < bytes.length) {
+      const b = bytes[i];
+      if (b === 0) break; // terminador
+      if (b < 0x80) {
+        s += String.fromCharCode(b);
+        i += 1;
+      } else if (b >= 0xc0 && b < 0xe0) {
+        const cp = ((b & 0x1f) << 6) | (bytes[i + 1] & 0x3f);
+        s += String.fromCharCode(cp);
+        i += 2;
+      } else if (b >= 0xe0 && b < 0xf0) {
+        const cp = ((b & 0x0f) << 12) | ((bytes[i + 1] & 0x3f) << 6) | (bytes[i + 2] & 0x3f);
+        s += String.fromCharCode(cp);
+        i += 3;
+      } else if (b >= 0xf0) {
+        let cp =
+          ((b & 0x07) << 18) |
+          ((bytes[i + 1] & 0x3f) << 12) |
+          ((bytes[i + 2] & 0x3f) << 6) |
+          (bytes[i + 3] & 0x3f);
+        cp -= 0x10000;
+        s += String.fromCharCode(0xd800 + (cp >> 10), 0xdc00 + (cp & 0x3ff));
+        i += 4;
+      } else {
+        i += 1; // byte de continuación suelto: ignorar
+      }
+    }
+    return s;
+  }
   private bytesToInt(bytes: number[]) {
     let a = 0;
     for (let i = 0; i < bytes.length; i++) a |= bytes[bytes.length - i - 1] << (i * 8);
@@ -258,8 +337,13 @@ class Loader {
     return a;
   }
   private bytesToBase64(bytes: number[]) {
+    // Construir el string binario en bloques con fromCharCode.apply evita el
+    // coste cuadrático de concatenar byte a byte (las carátulas son grandes).
     let s = '';
-    for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    const CHUNK = 8192;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      s += String.fromCharCode.apply(null, bytes.slice(i, i + CHUNK));
+    }
     return encode(s);
   }
 }
