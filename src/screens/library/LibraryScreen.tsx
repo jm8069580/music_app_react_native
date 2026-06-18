@@ -35,12 +35,20 @@ export default function LibraryScreen() {
     }, [load])
   );
 
-  // Suscribirse al progreso del background → refrescar lista cuando avance
+  // Suscribirse al progreso del background → refrescar lista cuando avance.
+  // Releer toda la BD en cada canción es caro; refrescamos al terminar o,
+  // como mucho, cada ~800 ms mientras procesa.
   useEffect(() => {
+    let lastLoad = 0;
     const unsubscribe = metadataService.subscribe((current, total) => {
       setMetaProgress({ current, total });
-      // Refrescar lista cuando termina cada canción (puedes hacerlo cada N para optimizar)
-      if (total > 0) load();
+      if (total <= 0) return;
+      const done = current >= total;
+      const now = Date.now();
+      if (done || now - lastLoad > 800) {
+        lastLoad = now;
+        load();
+      }
     });
     return unsubscribe;
   }, [load]);

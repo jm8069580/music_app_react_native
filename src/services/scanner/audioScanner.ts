@@ -76,10 +76,8 @@ export async function scanAudioLibrary(
   }
 
   import('../metadata/metadataBackgroundService').then(({ metadataService }) => {
-  metadataService.start();
-});
-
-return { totalFound: mp3Assets.length, inserted };
+    metadataService.start();
+  });
 
   return { totalFound: mp3Assets.length, inserted };
 }
