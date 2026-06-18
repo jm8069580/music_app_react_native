@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Pressable,
+  TouchableOpacity,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +16,22 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { getAllSongs } from '../../services/db/songsRepository';
 import { metadataService } from '../../services/metadata/metadataBackgroundService';
 import { usePlayerStore } from '../../services/player/playerStore';
+import { useFavoritesStore } from '../../services/player/favoritesStore';
 import type { Song } from '../../types/song';
+
+function HeartButton({ songId }: { songId: number }) {
+  const isFavorite = useFavoritesStore((s) => s.ids.has(songId));
+  const toggle = useFavoritesStore((s) => s.toggle);
+  return (
+    <TouchableOpacity onPress={() => toggle(songId)} hitSlop={10} style={styles.heart}>
+      <Ionicons
+        name={isFavorite ? 'heart' : 'heart-outline'}
+        size={22}
+        color={isFavorite ? '#1db954' : '#666'}
+      />
+    </TouchableOpacity>
+  );
+}
 
 export default function LibraryScreen() {
   const [songs, setSongs] = useState<Song[]>([]);
@@ -82,6 +98,7 @@ export default function LibraryScreen() {
           {item.artist ?? 'Desconocido'}
         </Text>
       </View>
+      <HeartButton songId={item.id} />
     </Pressable>
   );
 
@@ -148,6 +165,7 @@ const styles = StyleSheet.create({
   artwork: { width: 48, height: 48, borderRadius: 6, backgroundColor: '#222' },
   artworkPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
+  heart: { padding: 6 },
   title: { color: '#fff', fontSize: 15, fontWeight: '500' },
   subtitle: { color: '#888', fontSize: 13, marginTop: 2 },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },

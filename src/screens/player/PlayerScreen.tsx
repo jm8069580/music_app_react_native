@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Animated, Dimensions } from 'react-native';
 import { usePlayerStore } from '../../services/player/playerStore';
+import { useFavoritesStore, useIsFavorite } from '../../services/player/favoritesStore';
 import { useProgress, useIsPlaying } from '@rntp/player';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +24,8 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const next = usePlayerStore((s) => s.next);
   const previous = usePlayerStore((s) => s.previous);
   const seekTo = usePlayerStore((s) => s.seekTo);
+  const toggleFavorite = useFavoritesStore((s) => s.toggle);
+  const isFavorite = useIsFavorite(currentSong?.id);
 
   if (!currentSong) {
     return null;
@@ -44,7 +47,16 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       </TouchableOpacity>
 
       <Image source={artwork} style={styles.art} />
-      <Text style={styles.title}>{currentSong.title}</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title} numberOfLines={1}>{currentSong.title}</Text>
+        <TouchableOpacity onPress={() => toggleFavorite(currentSong.id)} hitSlop={10} style={styles.heart}>
+          <Ionicons
+            name={isFavorite ? 'heart' : 'heart-outline'}
+            size={26}
+            color={isFavorite ? '#1db954' : '#fff'}
+          />
+        </TouchableOpacity>
+      </View>
       <Text style={styles.artist}>{currentSong.artist}</Text>
 
       <Slider
@@ -88,7 +100,15 @@ const styles = StyleSheet.create({
   },
   close: { position: 'absolute', left: 12, top: 40 },
   art: { width: 280, height: 280, borderRadius: 8, backgroundColor: '#222' },
-  title: { color: '#fff', fontSize: 20, marginTop: 18 },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '90%',
+    marginTop: 18,
+    gap: 10,
+  },
+  title: { color: '#fff', fontSize: 20, flex: 1 },
+  heart: { padding: 4 },
   artist: { color: '#bbb', marginTop: 6 },
   times: { width: '90%', flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   timeText: { color: '#888' },

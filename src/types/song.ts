@@ -9,9 +9,10 @@ export type Song = {
   folder: string | null;
   added_at: number;
   metadata_extracted: number; // 0 | 1
+  is_favorite: number; // 0 | 1
 };
 
-export type NewSong = Omit<Song, 'id' | 'metadata_extracted'>;
+export type NewSong = Omit<Song, 'id' | 'metadata_extracted' | 'is_favorite'>;
 
 export type SongMetadataUpdate = {
   title?: string;

@@ -66,7 +66,6 @@ export async function scanAudioLibrary(
       album: null,
       duration_ms: Math.round(durationSec * 1000),
       artwork_uri: null,
-      metadata_extracted: 0,
       folder,
       added_at: now,
     });

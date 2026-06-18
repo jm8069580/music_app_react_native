@@ -1,8 +1,8 @@
 import { getDatabase } from './database';
-import type { Song } from '../../types/song';
+import type { Song, NewSong } from '../../types/song';
 import type { SongMetadataUpdate } from '../../types/song';
 
-export async function insertSong(song: Omit<Song, 'id'>): Promise<void> {
+export async function insertSong(song: NewSong): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(
     `INSERT OR IGNORE INTO songs (uri, title, artist, album, duration_ms, artwork_uri, folder, added_at)
@@ -73,4 +73,29 @@ export async function countPendingMetadata(): Promise<number> {
     `SELECT COUNT(*) AS c FROM songs WHERE metadata_extracted = 0`
   );
   return row?.c ?? 0;
+}
+
+// --- Favoritos ---
+
+export async function getFavoriteSongs(): Promise<Song[]> {
+  const db = await getDatabase();
+  return db.getAllAsync<Song>(
+    'SELECT * FROM songs WHERE is_favorite = 1 ORDER BY title COLLATE NOCASE ASC'
+  );
+}
+
+export async function getFavoriteIds(): Promise<number[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{ id: number }>(
+    'SELECT id FROM songs WHERE is_favorite = 1'
+  );
+  return rows.map((r) => r.id);
+}
+
+export async function setFavorite(id: number, favorite: boolean): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('UPDATE songs SET is_favorite = ? WHERE id = ?', [
+    favorite ? 1 : 0,
+    id,
+  ]);
 }
