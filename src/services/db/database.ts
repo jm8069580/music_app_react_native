@@ -41,6 +41,23 @@ async function runMigrations(db: SQLite.SQLiteDatabase) {
     CREATE INDEX IF NOT EXISTS idx_songs_title ON songs(title);
     CREATE INDEX IF NOT EXISTS idx_songs_metadata ON songs(metadata_extracted);
     CREATE INDEX IF NOT EXISTS idx_songs_favorite ON songs(is_favorite);
+
+    CREATE TABLE IF NOT EXISTS playlists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS playlist_songs (
+      playlist_id INTEGER NOT NULL,
+      song_id INTEGER NOT NULL,
+      position INTEGER NOT NULL,
+      PRIMARY KEY (playlist_id, song_id),
+      FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
+      FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_playlist_songs_playlist ON playlist_songs(playlist_id, position);
   `);
 
   // Migraciones suaves para BDs ya existentes (que no tenían la columna).

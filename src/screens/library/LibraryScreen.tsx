@@ -17,6 +17,7 @@ import { getAllSongs } from '../../services/db/songsRepository';
 import { metadataService } from '../../services/metadata/metadataBackgroundService';
 import { usePlayerStore } from '../../services/player/playerStore';
 import { useFavoritesStore } from '../../services/player/favoritesStore';
+import { AddToPlaylistSheet } from '../../components/AddToPlaylistSheet';
 import type { Song } from '../../types/song';
 
 function HeartButton({ songId }: { songId: number }) {
@@ -37,6 +38,7 @@ export default function LibraryScreen() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [metaProgress, setMetaProgress] = useState({ current: 0, total: 0 });
+  const [sheetSongId, setSheetSongId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     const data = await getAllSongs();
@@ -99,6 +101,13 @@ export default function LibraryScreen() {
         </Text>
       </View>
       <HeartButton songId={item.id} />
+      <TouchableOpacity
+        onPress={() => setSheetSongId(item.id)}
+        hitSlop={10}
+        style={styles.more}
+      >
+        <Ionicons name="ellipsis-vertical" size={20} color="#666" />
+      </TouchableOpacity>
     </Pressable>
   );
 
@@ -138,6 +147,12 @@ export default function LibraryScreen() {
           }
         />
       )}
+
+      <AddToPlaylistSheet
+        visible={sheetSongId != null}
+        songId={sheetSongId}
+        onClose={() => setSheetSongId(null)}
+      />
     </View>
   );
 }
@@ -166,6 +181,7 @@ const styles = StyleSheet.create({
   artworkPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
   heart: { padding: 6 },
+  more: { padding: 6 },
   title: { color: '#fff', fontSize: 15, fontWeight: '500' },
   subtitle: { color: '#888', fontSize: 13, marginTop: 2 },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },

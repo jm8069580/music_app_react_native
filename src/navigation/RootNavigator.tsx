@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import LibraryScreen from '../screens/library/LibraryScreen';
 import PlaylistsScreen from '../screens/playlists/PlaylistsScreen';
+import PlaylistDetailScreen from '../screens/playlists/PlaylistDetailScreen';
 import FavoritesScreen from '../screens/favorites/FavoritesScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import { PlayerScreen } from '../screens/player/PlayerScreen';
@@ -12,6 +13,18 @@ import { MiniPlayer } from '../services/player/MiniPlayer';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+const PlaylistsNativeStack = createNativeStackNavigator();
+
+// Stack anidado del tab Playlists: lista → detalle. Headers propios en cada
+// pantalla, por eso el navegador no muestra header.
+function PlaylistsStack() {
+    return (
+        <PlaylistsNativeStack.Navigator screenOptions={{ headerShown: false }}>
+            <PlaylistsNativeStack.Screen name="PlaylistsHome" component={PlaylistsScreen} />
+            <PlaylistsNativeStack.Screen name="PlaylistDetail" component={PlaylistDetailScreen} />
+        </PlaylistsNativeStack.Navigator>
+    );
+}
 
 function MainTabs() {
     return (
@@ -34,7 +47,11 @@ function MainTabs() {
             })}
         >
             <Tab.Screen name="Biblioteca" component={LibraryScreen} />
-            <Tab.Screen name="Playlists" component={PlaylistsScreen} />
+            <Tab.Screen
+                name="Playlists"
+                component={PlaylistsStack}
+                options={{ headerShown: false }}
+            />
             <Tab.Screen name="Favoritos" component={FavoritesScreen} />
             <Tab.Screen name="Ajustes" component={SettingsScreen} />
         </Tab.Navigator>
