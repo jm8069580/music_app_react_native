@@ -91,6 +91,20 @@ class PlayerService {
     TrackPlayer.play();
   }
 
+  /**
+   * Restaura una cola guardada SIN reproducir: deja la pista lista en pausa,
+   * posicionada en `startIndex` y desplazada a `positionMs`. Para el arranque
+   * de la app (cola persistente).
+   */
+  async restoreQueue(
+    songs: Song[],
+    startIndex: number,
+    positionMs: number
+  ): Promise<void> {
+    TrackPlayer.setMediaItems(songs.map(songToMediaItem), startIndex);
+    if (positionMs > 0) TrackPlayer.seekTo(positionMs / 1000);
+  }
+
   play() {
     TrackPlayer.play();
   }

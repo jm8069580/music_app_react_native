@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import type { Song } from '../../types/song';
 import { playerService } from './playerService';
+import { getSongsByIds } from '../db/songsRepository';
+import { savePlayerState, loadPlayerState } from '../db/playerStateRepository';
+
+// Throttle para no escribir en SQLite en cada tick de progreso (~cada segundo).
+let lastPositionSave = 0;
+const POSITION_SAVE_INTERVAL_MS = 5000;
 
 type PlayerState = {
   queue: Song[];
@@ -12,6 +18,8 @@ type PlayerState = {
   loading: boolean;
   ready: boolean;
   init: () => Promise<void>;
+  /** Restaura la cola guardada (en pausa). Llamar tras init() al arrancar. */
+  restore: () => Promise<void>;
   loadQueue: (songs: Song[], startIndex?: number) => Promise<void>;
   play: () => void;
   pause: () => void;
@@ -42,8 +50,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (get().ready) return;
     await playerService.setup({
       onIsPlayingChange: (playing) => set({ isPlaying: playing }),
-      onProgress: (positionMillis, durationMillis) =>
-        set({ positionMillis, durationMillis }),
+      onProgress: (positionMillis, durationMillis) => {
+        set({ positionMillis, durationMillis });
+        // Persistir posición con throttle mientras suena.
+        const now = Date.now();
+        if (now - lastPositionSave > POSITION_SAVE_INTERVAL_MS) {
+          lastPositionSave = now;
+          persistState(positionMillis);
+        }
+      },
       onTrackChange: (index) => {
         const { queue } = get();
         set({
@@ -51,9 +66,28 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           currentSong: queue[index] ?? null,
           loading: false,
         });
+        // Nueva pista → guardar índice y posición a 0.
+        persistState(0);
       },
     });
     set({ ready: true });
+  },
+
+  restore: async () => {
+    const saved = await loadPlayerState();
+    if (!saved || saved.queueIds.length === 0) return;
+    const songs = await getSongsByIds(saved.queueIds);
+    if (songs.length === 0) return;
+    let idx = songs.findIndex((s) => s.id === saved.currentSongId);
+    if (idx < 0) idx = 0;
+    set({
+      queue: songs,
+      currentIndex: idx,
+      currentSong: songs[idx] ?? null,
+      positionMillis: saved.positionMs,
+      durationMillis: songs[idx]?.duration_ms ?? 0,
+    });
+    await playerService.restoreQueue(songs, idx, saved.positionMs);
   },
 
   loadQueue: async (songs, startIndex = 0) => {
@@ -64,15 +98,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       currentSong: songs[startIndex] ?? null,
       loading: false,
     });
+    persistState(0);
   },
 
   play: () => playerService.play(),
 
-  pause: () => playerService.pause(),
+  pause: () => {
+    playerService.pause();
+    persistState(get().positionMillis);
+  },
 
   togglePlay: () => {
-    if (get().isPlaying) playerService.pause();
-    else playerService.play();
+    if (get().isPlaying) get().pause();
+    else get().play();
   },
 
   // La navegación de cola y el auto-avance al terminar son nativos:
@@ -83,3 +121,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   seekTo: (ms) => playerService.seekToMs(ms),
 }));
+
+/**
+ * Guarda el snapshot de la cola en SQLite (fire-and-forget). Lee el estado
+ * actual del store; ignora errores para no romper la reproducción.
+ */
+function persistState(positionMs: number): void {
+  const { queue, currentSong } = usePlayerStore.getState();
+  if (!currentSong || queue.length === 0) return;
+  savePlayerState(queue.map((s) => s.id), currentSong.id, positionMs).catch(() => {});
+}

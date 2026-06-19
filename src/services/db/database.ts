@@ -58,6 +58,14 @@ async function runMigrations(db: SQLite.SQLiteDatabase) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_playlist_songs_playlist ON playlist_songs(playlist_id, position);
+
+    CREATE TABLE IF NOT EXISTS player_state (
+      id INTEGER PRIMARY KEY,
+      queue_ids TEXT NOT NULL,
+      current_song_id INTEGER,
+      position_ms INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL
+    );
   `);
 
   // Migraciones suaves para BDs ya existentes (que no tenían la columna).

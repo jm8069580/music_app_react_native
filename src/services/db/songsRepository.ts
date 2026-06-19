@@ -25,6 +25,21 @@ export async function getAllSongs(): Promise<Song[]> {
   return db.getAllAsync<Song>('SELECT * FROM songs ORDER BY title COLLATE NOCASE ASC');
 }
 
+/** Devuelve las canciones de los IDs dados, en el MISMO orden que `ids`. */
+export async function getSongsByIds(ids: number[]): Promise<Song[]> {
+  if (ids.length === 0) return [];
+  const db = await getDatabase();
+  const placeholders = ids.map(() => '?').join(',');
+  const rows = await db.getAllAsync<Song>(
+    `SELECT * FROM songs WHERE id IN (${placeholders})`,
+    ids
+  );
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  return ids
+    .map((id) => byId.get(id))
+    .filter((s): s is Song => s != null);
+}
+
 export async function countSongs(): Promise<number> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) as c FROM songs');

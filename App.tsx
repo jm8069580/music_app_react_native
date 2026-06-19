@@ -8,8 +8,13 @@ import { useFavoritesStore } from './src/services/player/favoritesStore';
 
 export default function App() {
   useEffect(() => {
-    // Inicializa el player nativo (RNTP) en foreground antes de reproducir.
-    usePlayerStore.getState().init();
+    // Inicializa el player nativo (RNTP) y, una vez listo, restaura la cola
+    // persistida (en pausa) para retomar donde se dejó.
+    usePlayerStore
+      .getState()
+      .init()
+      .then(() => usePlayerStore.getState().restore())
+      .catch(() => {});
     // Carga los IDs favoritos para que el corazón refleje el estado al instante.
     useFavoritesStore.getState().load();
     // Retomar metadatos pendientes si los hay
