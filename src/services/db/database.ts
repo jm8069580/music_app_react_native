@@ -34,7 +34,8 @@ async function runMigrations(db: SQLite.SQLiteDatabase) {
       folder TEXT,
       added_at INTEGER NOT NULL,
       metadata_extracted INTEGER NOT NULL DEFAULT 0,
-      is_favorite INTEGER NOT NULL DEFAULT 0
+      is_favorite INTEGER NOT NULL DEFAULT 0,
+      lyrics TEXT
     );
 
     CREATE INDEX IF NOT EXISTS idx_songs_folder ON songs(folder);
@@ -71,6 +72,7 @@ async function runMigrations(db: SQLite.SQLiteDatabase) {
   // Migraciones suaves para BDs ya existentes (que no tenían la columna).
   await addColumnIfMissing(db, 'metadata_extracted', 'INTEGER NOT NULL DEFAULT 0');
   await addColumnIfMissing(db, 'is_favorite', 'INTEGER NOT NULL DEFAULT 0');
+  await addColumnIfMissing(db, 'lyrics', 'TEXT');
 }
 
 /**

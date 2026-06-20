@@ -9,6 +9,7 @@ import PlaylistDetailScreen from '../screens/playlists/PlaylistDetailScreen';
 import FavoritesScreen from '../screens/favorites/FavoritesScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import { PlayerScreen } from '../screens/player/PlayerScreen';
+import LyricsScreen from '../screens/player/LyricsScreen';
 import { MiniPlayer } from '../services/player/MiniPlayer';
 
 const Tab = createBottomTabNavigator();
@@ -66,6 +67,11 @@ export default function RootNavigator() {
                 <Stack.Group screenOptions={{ presentation: 'transparentModal' }}>
                     <Stack.Screen name="PlayerModal" component={PlayerScreen} />
                 </Stack.Group>
+                <Stack.Screen
+                    name="LyricsModal"
+                    component={LyricsScreen}
+                    options={{ presentation: 'modal' }}
+                />
             </Stack.Navigator>
             <MiniPlayer />
         </NavigationContainer>

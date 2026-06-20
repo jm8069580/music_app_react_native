@@ -46,6 +46,19 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <Ionicons name="chevron-down" size={28} color="#fff" />
       </TouchableOpacity>
 
+      <TouchableOpacity
+        style={styles.lyricsBtn}
+        onPress={() =>
+          navigation.navigate('LyricsModal', {
+            songId: currentSong.id,
+            title: currentSong.title,
+          })
+        }
+        hitSlop={10}
+      >
+        <Ionicons name="document-text-outline" size={24} color="#fff" />
+      </TouchableOpacity>
+
       <Image source={artwork} style={styles.art} />
       <View style={styles.titleRow}>
         <Text style={styles.title} numberOfLines={1}>{currentSong.title}</Text>
@@ -99,6 +112,7 @@ const styles = StyleSheet.create({
     paddingTop: 48,
   },
   close: { position: 'absolute', left: 12, top: 40 },
+  lyricsBtn: { position: 'absolute', right: 12, top: 40 },
   art: { width: 280, height: 280, borderRadius: 8, backgroundColor: '#222' },
   titleRow: {
     flexDirection: 'row',

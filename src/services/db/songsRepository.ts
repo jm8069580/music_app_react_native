@@ -46,6 +46,18 @@ export async function countSongs(): Promise<number> {
   return row?.c ?? 0;
 }
 
+export async function getSongById(id: number): Promise<Song | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<Song>('SELECT * FROM songs WHERE id = ?', [id]);
+  return row ?? null;
+}
+
+export async function updateLyrics(id: number, lyrics: string | null): Promise<void> {
+  const db = await getDatabase();
+  const value = lyrics && lyrics.trim().length > 0 ? lyrics : null;
+  await db.runAsync('UPDATE songs SET lyrics = ? WHERE id = ?', [value, id]);
+}
+
 export async function clearSongs(): Promise<void> {
   const db = await getDatabase();
   await db.execAsync('DELETE FROM songs');
