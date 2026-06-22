@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,15 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  LayoutChangeEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useProgress } from '@rntp/player';
 
 import { getSongById, updateLyrics } from '../../services/db/songsRepository';
+import { isLrcFormat, parseLrc, getCurrentLineIndex, type LrcLine } from '../../utils/lrcParser';
 
 export default function LyricsScreen() {
   const navigation = useNavigation<any>();
@@ -22,11 +25,27 @@ export default function LyricsScreen() {
   const insets = useSafeAreaInsets();
   const { songId, title } = route.params as { songId: number; title: string };
 
+  const { position } = useProgress();
+  const positionMs = position * 1000;
+
   const [lyrics, setLyrics] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const scrollRef = useRef<ScrollView>(null);
+  const lineOffsets = useRef<number[]>([]);
+
+  const lrcLines = useMemo(() => {
+    if (!lyrics || !isLrcFormat(lyrics)) return null;
+    return parseLrc(lyrics);
+  }, [lyrics]);
+
+  const currentIdx = useMemo(() => {
+    if (!lrcLines) return -1;
+    return getCurrentLineIndex(lrcLines, positionMs);
+  }, [lrcLines, positionMs]);
 
   const load = useCallback(async () => {
     const song = await getSongById(songId);
@@ -37,6 +56,17 @@ export default function LyricsScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!lrcLines || editing || currentIdx < 0) return;
+    const offset = lineOffsets.current[currentIdx];
+    if (offset === undefined) return;
+    scrollRef.current?.scrollTo({ y: Math.max(0, offset - 200), animated: true });
+  }, [currentIdx, lrcLines, editing]);
+
+  const handleLineLayout = (idx: number, e: LayoutChangeEvent) => {
+    lineOffsets.current[idx] = e.nativeEvent.layout.y;
+  };
 
   const startEdit = () => {
     setDraft(lyrics ?? '');
@@ -50,6 +80,33 @@ export default function LyricsScreen() {
     setLyrics(value);
     setEditing(false);
     setSaving(false);
+  };
+
+  const isLrc = lrcLines !== null;
+
+  const renderLrcLine = (line: LrcLine, idx: number) => {
+    const isCurrent = idx === currentIdx;
+    const isPast = idx < currentIdx;
+    return (
+      <View
+        key={idx}
+        onLayout={(e) => handleLineLayout(idx, e)}
+        style={[styles.lrcLine, isCurrent && styles.lrcLineCurrent]}
+      >
+        <Text style={[styles.lrcTimestamp, isCurrent && styles.lrcTimestampCurrent]}>
+          {formatTimestamp(line.timeMs)}
+        </Text>
+        <Text
+          style={[
+            styles.lrcText,
+            isCurrent && styles.lrcTextCurrent,
+            isPast && !isCurrent && styles.lrcTextPast,
+          ]}
+        >
+          {line.text}
+        </Text>
+      </View>
+    );
   };
 
   return (
@@ -86,6 +143,10 @@ export default function LyricsScreen() {
           autoFocus
           textAlignVertical="top"
         />
+      ) : lyrics && isLrc ? (
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.lrcWrap}>
+          {lrcLines.map((line, idx) => renderLrcLine(line, idx))}
+        </ScrollView>
       ) : lyrics ? (
         <ScrollView contentContainerStyle={styles.lyricsWrap}>
           <Text style={styles.lyrics}>{lyrics}</Text>
@@ -103,6 +164,12 @@ export default function LyricsScreen() {
       )}
     </KeyboardAvoidingView>
   );
+}
+
+function formatTimestamp(ms: number): string {
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 const styles = StyleSheet.create({
@@ -125,6 +192,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     padding: 20,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 16 },
   emptyText: { color: '#888', textAlign: 'center', fontSize: 15 },
@@ -138,4 +206,38 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   addBtnText: { color: '#000', fontSize: 15, fontWeight: 'bold' },
+
+  lrcWrap: { paddingVertical: 24, paddingHorizontal: 20 },
+  lrcLine: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 6,
+    gap: 12,
+  },
+  lrcLineCurrent: {},
+  lrcTimestamp: {
+    color: '#555',
+    fontSize: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    lineHeight: 22,
+    minWidth: 36,
+    textAlign: 'right',
+  },
+  lrcTimestampCurrent: {
+    color: '#1db954',
+  },
+  lrcText: {
+    color: '#aaa',
+    fontSize: 17,
+    lineHeight: 24,
+    flex: 1,
+  },
+  lrcTextCurrent: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  lrcTextPast: {
+    color: '#666',
+  },
 });
