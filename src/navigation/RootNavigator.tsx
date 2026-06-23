@@ -82,8 +82,8 @@ export default function RootNavigator() {
                         options={{ presentation: 'modal' }}
                     />
                 </Stack.Navigator>
+                <MiniPlayer />
             </NavigationContainer>
-            <MiniPlayer />
         </View>
     );
 }
