@@ -33,7 +33,7 @@ function MainTabs() {
             screenOptions={({ route }) => ({
                 headerStyle: { backgroundColor: '#0a0a0a' },
                 headerTintColor: '#fff',
-                tabBarStyle: { backgroundColor: '#0a0a0a', borderTopColor: '#222' },
+                tabBarStyle: { backgroundColor: '#0a0a0a', borderTopColor: '#222', paddingBottom: 0, height: 56 },
                 tabBarActiveTintColor: '#1db954',
                 tabBarInactiveTintColor: '#888',
                 tabBarIcon: ({ color, size }) => {
