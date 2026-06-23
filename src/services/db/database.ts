@@ -1,21 +1,46 @@
 import * as SQLite from 'expo-sqlite';
 
-// Memoizamos la PROMESA (no la instancia ya resuelta) para que la apertura y
-// las migraciones ocurran una sola vez aunque varios consumidores llamen a
-// getDatabase() en el mismo tick (favoritos + metadatos + scanner al arrancar).
-// Si no, se abren varias conexiones en paralelo y prepareAsync puede ejecutarse
-// sobre un handle nativo nulo → NullPointerException.
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
+let serialQueue = Promise.resolve();
 
 export function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (!dbPromise) {
     dbPromise = (async () => {
       const db = await SQLite.openDatabaseAsync('musicapp.db');
       await runMigrations(db);
-      return db;
+      return wrap(db);
     })();
   }
   return dbPromise;
+}
+
+function wrap(db: SQLite.SQLiteDatabase): SQLite.SQLiteDatabase {
+  const enqueued = <T>(fn: () => Promise<T>) => {
+    const op = serialQueue.then(fn, fn);
+    serialQueue = op.then(() => {}, () => {});
+    return op;
+  };
+  const run = (sql: string, params?: any[]) =>
+    params !== undefined
+      ? db.runAsync(sql, params)
+      : db.runAsync(sql);
+  const all = <T>(sql: string, params?: any[]) =>
+    params !== undefined
+      ? db.getAllAsync<T>(sql, params)
+      : db.getAllAsync<T>(sql);
+  const first = <T>(sql: string, params?: any[]) =>
+    params !== undefined
+      ? db.getFirstAsync<T>(sql, params)
+      : db.getFirstAsync<T>(sql);
+  return {
+    execAsync: (sql: string) => enqueued(() => db.execAsync(sql)),
+    runAsync: (sql: string, params?: any[]) =>
+      enqueued(() => run(sql, params)),
+    getAllAsync: <T>(sql: string, params?: any[]) =>
+      enqueued(() => all<T>(sql, params)),
+    getFirstAsync: <T>(sql: string, params?: any[]) =>
+      enqueued(() => first<T>(sql, params)),
+  } as SQLite.SQLiteDatabase;
 }
 
 async function runMigrations(db: SQLite.SQLiteDatabase) {
@@ -69,16 +94,11 @@ async function runMigrations(db: SQLite.SQLiteDatabase) {
     );
   `);
 
-  // Migraciones suaves para BDs ya existentes (que no tenían la columna).
   await addColumnIfMissing(db, 'metadata_extracted', 'INTEGER NOT NULL DEFAULT 0');
   await addColumnIfMissing(db, 'is_favorite', 'INTEGER NOT NULL DEFAULT 0');
   await addColumnIfMissing(db, 'lyrics', 'TEXT');
 }
 
-/**
- * Añade una columna a `songs` solo si aún no existe (idempotente).
- * Evita el ALTER TABLE que falla cuando la columna ya está presente.
- */
 async function addColumnIfMissing(
   db: SQLite.SQLiteDatabase,
   column: string,

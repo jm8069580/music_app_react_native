@@ -138,6 +138,10 @@ export default function LibraryScreen() {
           data={songs}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
+          removeClippedSubviews
+          windowSize={7}
+          maxToRenderPerBatch={15}
+          initialNumToRender={12}
           refreshControl={
             <RefreshControl
               refreshing={false}
