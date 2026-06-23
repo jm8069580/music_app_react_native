@@ -130,6 +130,28 @@ export async function removeSongsByUris(uris: string[]): Promise<void> {
   await db.runAsync(`DELETE FROM songs WHERE uri IN (${placeholders})`, uris);
 }
 
+export async function countSongsWithoutArtwork(): Promise<number> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ c: number }>(
+    "SELECT COUNT(*) AS c FROM songs WHERE artwork_uri IS NULL"
+  );
+  return row?.c ?? 0;
+}
+
+export async function resetMissingArtwork(): Promise<number> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ c: number }>(
+    "SELECT COUNT(*) AS c FROM songs WHERE artwork_uri IS NULL AND metadata_extracted = 1"
+  );
+  const count = row?.c ?? 0;
+  if (count > 0) {
+    await db.runAsync(
+      "UPDATE songs SET metadata_extracted = 0 WHERE artwork_uri IS NULL AND metadata_extracted = 1"
+    );
+  }
+  return count;
+}
+
 // --- Favoritos ---
 
 export async function getFavoriteSongs(): Promise<Song[]> {
