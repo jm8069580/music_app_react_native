@@ -6,6 +6,8 @@ import { useIsPlaying } from '@rntp/player';
 import { usePlayerStore } from '../../services/player/playerStore';
 import { Ionicons } from '@expo/vector-icons';
 
+const TAB_BAR_HEIGHT = 56;
+
 export const MiniPlayer: React.FC = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -20,7 +22,16 @@ export const MiniPlayer: React.FC = () => {
   const artwork = currentSong.artwork_uri ? { uri: currentSong.artwork_uri } : require('../../../assets/default_artwork.png');
 
   return (
-    <TouchableOpacity style={[styles.container, { paddingBottom: insets.bottom + 8 }]} activeOpacity={0.9} onPress={() => navigation.navigate('PlayerModal' as never)}>
+    <TouchableOpacity
+      style={[
+        styles.container,
+        {
+          bottom: TAB_BAR_HEIGHT + insets.bottom,
+        },
+      ]}
+      activeOpacity={0.9}
+      onPress={() => navigation.navigate('PlayerModal' as never)}
+    >
       <Image source={artwork} style={styles.art} />
       <View style={styles.meta}>
         <Text numberOfLines={1} style={styles.title}>{currentSong.title ?? 'Desconocido'}</Text>
@@ -36,13 +47,14 @@ export const MiniPlayer: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     backgroundColor: '#121212',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingTop: 8,
-    // paddingBottom se aplica en línea: 8 + inset inferior del dispositivo,
-    // para no chocar con la barra de gestos/navegación del móvil.
+    paddingVertical: 8,
     borderTopWidth: 1,
     borderTopColor: '#222',
   },

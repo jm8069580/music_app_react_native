@@ -1,6 +1,8 @@
+import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import LibraryScreen from '../screens/library/LibraryScreen';
@@ -15,9 +17,8 @@ import { MiniPlayer } from '../services/player/MiniPlayer';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 const PlaylistsNativeStack = createNativeStackNavigator();
+const TAB_BAR_HEIGHT = 56;
 
-// Stack anidado del tab Playlists: lista → detalle. Headers propios en cada
-// pantalla, por eso el navegador no muestra header.
 function PlaylistsStack() {
     return (
         <PlaylistsNativeStack.Navigator screenOptions={{ headerShown: false }}>
@@ -28,12 +29,18 @@ function PlaylistsStack() {
 }
 
 function MainTabs() {
+    const insets = useSafeAreaInsets();
     return (
         <Tab.Navigator
             screenOptions={({ route }) => ({
                 headerStyle: { backgroundColor: '#0a0a0a' },
                 headerTintColor: '#fff',
-                tabBarStyle: { backgroundColor: '#0a0a0a', borderTopColor: '#222', paddingBottom: 0, height: 56 },
+                tabBarStyle: {
+                    backgroundColor: '#0a0a0a',
+                    borderTopColor: '#222',
+                    height: TAB_BAR_HEIGHT + insets.bottom,
+                    paddingBottom: insets.bottom,
+                },
                 tabBarActiveTintColor: '#1db954',
                 tabBarInactiveTintColor: '#888',
                 tabBarIcon: ({ color, size }) => {
@@ -60,20 +67,23 @@ function MainTabs() {
 }
 
 export default function RootNavigator() {
+    const insets = useSafeAreaInsets();
     return (
-        <NavigationContainer>
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="MainTabs" component={MainTabs} />
-                <Stack.Group screenOptions={{ presentation: 'transparentModal' }}>
-                    <Stack.Screen name="PlayerModal" component={PlayerScreen} />
-                </Stack.Group>
-                <Stack.Screen
-                    name="LyricsModal"
-                    component={LyricsScreen}
-                    options={{ presentation: 'modal' }}
-                />
-            </Stack.Navigator>
+        <View style={{ flex: 1 }}>
+            <NavigationContainer>
+                <Stack.Navigator screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="MainTabs" component={MainTabs} />
+                    <Stack.Group screenOptions={{ presentation: 'transparentModal' }}>
+                        <Stack.Screen name="PlayerModal" component={PlayerScreen} />
+                    </Stack.Group>
+                    <Stack.Screen
+                        name="LyricsModal"
+                        component={LyricsScreen}
+                        options={{ presentation: 'modal' }}
+                    />
+                </Stack.Navigator>
+            </NavigationContainer>
             <MiniPlayer />
-        </NavigationContainer>
+        </View>
     );
 }
