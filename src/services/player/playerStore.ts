@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import TrackPlayer from '@rntp/player';
 import type { Song } from '../../types/song';
 import { playerService } from './playerService';
 import { getSongsByIds } from '../db/songsRepository';
@@ -52,6 +53,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       onIsPlayingChange: (playing) => set({ isPlaying: playing }),
       onProgress: (positionMillis, durationMillis) => {
         set({ positionMillis, durationMillis });
+        // Verificar que el currentIndex del store coincida con el nativo.
+        // El evento MediaItemTransition no siempre se propaga de forma fiable,
+        // pero la notificación nativa sí se actualiza porque lee directo de
+        // ExoPlayer. Este cross-check mantiene el store sincronizado.
+        const { currentIndex, queue } = get();
+        const nativeIndex = TrackPlayer.getActiveMediaItemIndex();
+        if (nativeIndex !== null && nativeIndex !== currentIndex && queue[nativeIndex]) {
+          set({
+            currentIndex: nativeIndex,
+            currentSong: queue[nativeIndex],
+          });
+          persistState(positionMillis);
+        }
         // Persistir posición con throttle mientras suena.
         const now = Date.now();
         if (now - lastPositionSave > POSITION_SAVE_INTERVAL_MS) {
