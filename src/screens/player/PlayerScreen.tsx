@@ -63,6 +63,7 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       <Image source={artwork} style={styles.art} />
       <View style={styles.titleRow}>
+        <View style={styles.titleSpacer} />
         <Text style={styles.title} numberOfLines={1}>{currentSong.title}</Text>
         <TouchableOpacity onPress={() => toggleFavorite(currentSong.id)} hitSlop={10} style={styles.heart}>
           <Ionicons
@@ -144,10 +145,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '90%',
     marginTop: 18,
-    gap: 10,
   },
-  title: { color: '#fff', fontSize: 20, flex: 1 },
-  heart: { padding: 4 },
+  titleSpacer: { width: 34 },
+  title: { color: '#fff', fontSize: 20, flex: 1, textAlign: 'center' },
+  heart: { padding: 4, width: 34, alignItems: 'flex-end' },
   artist: { color: '#bbb', marginTop: 6 },
   times: { width: '90%', flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   timeText: { color: '#888' },
