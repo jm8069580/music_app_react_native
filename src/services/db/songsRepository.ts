@@ -20,9 +20,24 @@ export async function insertSong(song: NewSong): Promise<void> {
   );
 }
 
-export async function getAllSongs(): Promise<Song[]> {
+export type SortField = 'title' | 'artist' | 'album' | 'duration_ms' | 'added_at';
+
+export async function getAllSongs(sort: SortField = 'title'): Promise<Song[]> {
   const db = await getDatabase();
-  return db.getAllAsync<Song>('SELECT * FROM songs ORDER BY title COLLATE NOCASE ASC');
+  const collate = sort === 'title' || sort === 'artist' || sort === 'album' ? ' COLLATE NOCASE' : '';
+  return db.getAllAsync<Song>(
+    `SELECT * FROM songs ORDER BY ${sort}${collate} ASC`
+  );
+}
+
+export async function searchSongs(query: string, sort: SortField = 'title'): Promise<Song[]> {
+  const db = await getDatabase();
+  const like = `%${query}%`;
+  const collate = sort === 'title' || sort === 'artist' || sort === 'album' ? ' COLLATE NOCASE' : '';
+  return db.getAllAsync<Song>(
+    `SELECT * FROM songs WHERE title LIKE ? OR artist LIKE ? OR album LIKE ? ORDER BY ${sort}${collate} ASC`,
+    [like, like, like]
+  );
 }
 
 /** Devuelve las canciones de los IDs dados, en el MISMO orden que `ids`. */
@@ -100,6 +115,19 @@ export async function countPendingMetadata(): Promise<number> {
     `SELECT COUNT(*) AS c FROM songs WHERE metadata_extracted = 0`
   );
   return row?.c ?? 0;
+}
+
+export async function getAllUris(): Promise<string[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{ uri: string }>('SELECT uri FROM songs');
+  return rows.map((r) => r.uri);
+}
+
+export async function removeSongsByUris(uris: string[]): Promise<void> {
+  if (uris.length === 0) return;
+  const db = await getDatabase();
+  const placeholders = uris.map(() => '?').join(',');
+  await db.runAsync(`DELETE FROM songs WHERE uri IN (${placeholders})`, uris);
 }
 
 // --- Favoritos ---

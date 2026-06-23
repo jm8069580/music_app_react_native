@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,13 @@ import {
   RefreshControl,
   Pressable,
   TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
-import { getAllSongs } from '../../services/db/songsRepository';
+import { getAllSongs, searchSongs, type SortField } from '../../services/db/songsRepository';
 import { metadataService } from '../../services/metadata/metadataBackgroundService';
 import { usePlayerStore } from '../../services/player/playerStore';
 import { useFavoritesStore } from '../../services/player/favoritesStore';
@@ -34,17 +35,38 @@ function HeartButton({ songId }: { songId: number }) {
   );
 }
 
+const SORT_OPTIONS: { key: SortField; label: string }[] = [
+  { key: 'title', label: 'Título' },
+  { key: 'artist', label: 'Artista' },
+  { key: 'album', label: 'Álbum' },
+  { key: 'duration_ms', label: 'Duración' },
+  { key: 'added_at', label: 'Fecha' },
+];
+
 export default function LibraryScreen() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [metaProgress, setMetaProgress] = useState({ current: 0, total: 0 });
   const [sheetSongId, setSheetSongId] = useState<number | null>(null);
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<SortField>('title');
 
   const load = useCallback(async () => {
-    const data = await getAllSongs();
+    const data = await getAllSongs(sort);
     setSongs(data);
     setLoading(false);
-  }, []);
+  }, [sort]);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return songs;
+    const q = search.toLowerCase();
+    return songs.filter(
+      (s) =>
+        s.title.toLowerCase().includes(q) ||
+        (s.artist && s.artist.toLowerCase().includes(q)) ||
+        (s.album && s.album.toLowerCase().includes(q))
+    );
+  }, [songs, search]);
 
   // Cargar al montar y al volver al tab
   useFocusEffect(
@@ -74,7 +96,7 @@ export default function LibraryScreen() {
   const navigation = useNavigation<any>();
 
   const loadAndPlayFromIndex = async (index: number) => {
-    await usePlayerStore.getState().loadQueue(songs, index);
+    await usePlayerStore.getState().loadQueue(filtered, index);
     navigation.navigate('PlayerModal' as never);
   };
 
@@ -125,17 +147,47 @@ export default function LibraryScreen() {
         )}
       </View>
 
+      <View style={styles.searchRow}>
+        <Ionicons name="search" size={18} color="#888" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar canciones..."
+          placeholderTextColor="#666"
+          value={search}
+          onChangeText={setSearch}
+        />
+        {search.length > 0 && (
+          <TouchableOpacity onPress={() => setSearch('')} hitSlop={10}>
+            <Ionicons name="close-circle" size={18} color="#888" />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <View style={styles.sortRow}>
+        {SORT_OPTIONS.map((o) => (
+          <TouchableOpacity
+            key={o.key}
+            onPress={() => setSort(o.key)}
+            style={[styles.sortChip, sort === o.key && styles.sortChipActive]}
+          >
+            <Text style={[styles.sortChipText, sort === o.key && styles.sortChipTextActive]}>
+              {o.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {loading ? (
         <ActivityIndicator color="#1db954" style={{ marginTop: 40 }} />
-      ) : songs.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyText}>
-            No hay canciones. Ve a Ajustes → Escanear biblioteca.
+            {search ? 'Sin resultados' : 'No hay canciones. Ve a Ajustes → Escanear biblioteca.'}
           </Text>
         </View>
       ) : (
         <FlatList
-          data={songs}
+          data={filtered}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
           removeClippedSubviews
@@ -188,6 +240,33 @@ const styles = StyleSheet.create({
   more: { padding: 6 },
   title: { color: '#fff', fontSize: 15, fontWeight: '500' },
   subtitle: { color: '#888', fontSize: 13, marginTop: 2 },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    height: 38,
+  },
+  searchIcon: { marginRight: 6 },
+  searchInput: { flex: 1, color: '#fff', fontSize: 14 },
+  sortRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    marginBottom: 4,
+    gap: 6,
+  },
+  sortChip: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: '#1a1a1a',
+  },
+  sortChipActive: { backgroundColor: '#1db954' },
+  sortChipText: { color: '#888', fontSize: 12 },
+  sortChipTextActive: { color: '#000', fontWeight: '600' },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   emptyText: { color: '#888', textAlign: 'center' },
 });

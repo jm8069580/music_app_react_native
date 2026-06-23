@@ -1,9 +1,10 @@
 import * as MediaLibrary from 'expo-media-library/legacy';
-import { insertSong } from '../db/songsRepository';
+import { insertSong, getAllUris, removeSongsByUris } from '../db/songsRepository';
 
 export type ScanResult = {
   totalFound: number;
   inserted: number;
+  cleaned: number;
 };
 
 type AudioAsset = {
@@ -74,11 +75,19 @@ export async function scanAudioLibrary(
     onProgress?.(i + 1, mp3Assets.length);
   }
 
+  // 4. Limpieza: eliminar canciones que ya no existen en el dispositivo
+  const scannedUris = new Set(mp3Assets.map((a) => a.uri));
+  const dbUris = await getAllUris();
+  const orphaned = dbUris.filter((uri) => !scannedUris.has(uri));
+  if (orphaned.length > 0) {
+    await removeSongsByUris(orphaned);
+  }
+
   import('../metadata/metadataBackgroundService').then(({ metadataService }) => {
     metadataService.start();
   });
 
-  return { totalFound: mp3Assets.length, inserted };
+  return { totalFound: mp3Assets.length, inserted, cleaned: orphaned.length };
 }
 
 function extractFolder(uri: string): string | null {

@@ -44,7 +44,7 @@ export default function SettingsScreen() {
       const totalInDb = await countSongs();
       Alert.alert(
         '✅ Escaneo completado',
-        `Encontradas: ${result.totalFound} canciones\nTotal en biblioteca: ${totalInDb}`
+        `Encontradas: ${result.totalFound}\nAñadidas: ${result.inserted}\nLimpiadas (huérfanas): ${result.cleaned}\nTotal en BD: ${totalInDb}`
       );
     } catch (err: any) {
       Alert.alert('❌ Error', err.message ?? 'Error desconocido');

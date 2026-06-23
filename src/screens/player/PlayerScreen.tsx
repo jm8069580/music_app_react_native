@@ -15,8 +15,6 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, []);
 
   const currentSong = usePlayerStore((s) => s.currentSong);
-  // Progreso y estado de reproducción vía hooks de RNTP v5 (en segundos),
-  // que son la fuente fiable; el bridge por eventos no emitía progreso.
   const { position, duration } = useProgress();
   const isPlaying = useIsPlaying();
   const play = usePlayerStore((s) => s.play);
@@ -24,6 +22,10 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const next = usePlayerStore((s) => s.next);
   const previous = usePlayerStore((s) => s.previous);
   const seekTo = usePlayerStore((s) => s.seekTo);
+  const shuffle = usePlayerStore((s) => s.shuffle);
+  const repeat = usePlayerStore((s) => s.repeat);
+  const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
+  const toggleRepeat = usePlayerStore((s) => s.toggleRepeat);
   const toggleFavorite = useFavoritesStore((s) => s.toggle);
   const isFavorite = useIsFavorite(currentSong?.id);
 
@@ -87,6 +89,14 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       </View>
 
       <View style={styles.controls}>
+        <TouchableOpacity onPress={toggleShuffle}>
+          <Ionicons
+            name="shuffle"
+            size={26}
+            color={shuffle ? '#1db954' : '#888'}
+          />
+        </TouchableOpacity>
+
         <TouchableOpacity onPress={() => previous()}>
           <Ionicons name="play-skip-back" size={36} color="#fff" />
         </TouchableOpacity>
@@ -97,6 +107,21 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
         <TouchableOpacity onPress={() => next()}>
           <Ionicons name="play-skip-forward" size={36} color="#fff" />
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={toggleRepeat}>
+          {repeat === 'one' ? (
+            <View style={styles.repeatOneWrap}>
+              <Ionicons name="repeat" size={24} color="#1db954" />
+              <Text style={styles.repeatOneText}>1</Text>
+            </View>
+          ) : (
+            <Ionicons
+              name="repeat"
+              size={26}
+              color={repeat === 'all' ? '#1db954' : '#888'}
+            />
+          )}
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -126,5 +151,13 @@ const styles = StyleSheet.create({
   artist: { color: '#bbb', marginTop: 6 },
   times: { width: '90%', flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   timeText: { color: '#888' },
-  controls: { flexDirection: 'row', alignItems: 'center', marginTop: 24 },
+  controls: { flexDirection: 'row', alignItems: 'center', marginTop: 24, gap: 24 },
+  repeatOneWrap: { position: 'relative' },
+  repeatOneText: {
+    position: 'absolute',
+    top: -4, right: -6,
+    color: '#1db954',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
 });
