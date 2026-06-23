@@ -101,23 +101,33 @@ export default function LibraryScreen() {
   };
 
   const isProcessingMeta = metaProgress.total > 0 && metaProgress.current < metaProgress.total;
+  const currentSong = usePlayerStore((s) => s.currentSong);
 
-  const renderItem = ({ item, index }: { item: Song; index: number }) => (
+  const renderItem = ({ item, index }: { item: Song; index: number }) => {
+    const isActive = currentSong?.id === item.id;
+    return (
     <Pressable style={styles.row} onPress={() => loadAndPlayFromIndex(index)}>
-      {item.artwork_uri ? (
-        <Image
-          source={{ uri: item.artwork_uri }}
-          style={styles.artwork}
-          contentFit="cover"
-          transition={150}
-        />
-      ) : (
-        <View style={[styles.artwork, styles.artworkPlaceholder]}>
-          <Ionicons name="musical-note" size={22} color="#666" />
-        </View>
-      )}
+      <View style={styles.artworkWrap}>
+        {item.artwork_uri ? (
+          <Image
+            source={{ uri: item.artwork_uri }}
+            style={styles.artwork}
+            contentFit="cover"
+            transition={150}
+          />
+        ) : (
+          <View style={[styles.artwork, styles.artworkPlaceholder]}>
+            <Ionicons name="musical-note" size={22} color="#666" />
+          </View>
+        )}
+        {isActive && (
+          <View style={styles.playingBadge}>
+            <Ionicons name="play" size={14} color="#fff" />
+          </View>
+        )}
+      </View>
       <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+        <Text style={[styles.title, isActive && styles.titleActive]} numberOfLines={1}>{item.title}</Text>
         <Text style={styles.subtitle} numberOfLines={1}>
           {item.artist ?? 'Desconocido'}
         </Text>
@@ -132,6 +142,7 @@ export default function LibraryScreen() {
       </TouchableOpacity>
     </Pressable>
   );
+  };
 
   return (
     <View style={styles.container}>
@@ -233,8 +244,21 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     gap: 12,
   },
+  artworkWrap: { position: 'relative' },
   artwork: { width: 48, height: 48, borderRadius: 6, backgroundColor: '#222' },
   artworkPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  playingBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#1db954',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleActive: { color: '#1db954' },
   info: { flex: 1 },
   heart: { padding: 6 },
   more: { padding: 6 },
