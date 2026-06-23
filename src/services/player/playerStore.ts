@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import TrackPlayer from '@rntp/player';
+import TrackPlayer, { type MediaItem } from '@rntp/player';
 import type { Song } from '../../types/song';
 import { playerService } from './playerService';
 import { getSongsByIds } from '../db/songsRepository';
@@ -73,14 +73,24 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           persistState(positionMillis);
         }
       },
-      onTrackChange: (index) => {
+      onTrackChange: (index, item) => {
         const { queue } = get();
+        // Preferimos el índice del evento (fuente autoritativa de la
+        // transición) frente a getActiveMediaItemIndex() que puede
+        // devolver un valor obsoleto durante el cambio.
+        let idx = index;
+        // Si el MediaItem del evento tiene mediaId, buscamos la
+        // canción correspondiente en la cola de Zustand. Esto nos
+        // protege ante desincronizaciones entre la cola nativa y JS.
+        if (item?.mediaId) {
+          const match = queue.findIndex((s) => String(s.id) === item.mediaId);
+          if (match >= 0) idx = match;
+        }
         set({
-          currentIndex: index,
-          currentSong: queue[index] ?? null,
+          currentIndex: idx,
+          currentSong: queue[idx] ?? null,
           loading: false,
         });
-        // Nueva pista → guardar índice y posición a 0.
         persistState(0);
       },
     });

@@ -13,7 +13,7 @@ import type { Song } from '../../types/song';
 export type PlayerEvents = {
   onIsPlayingChange?: (playing: boolean) => void;
   onProgress?: (positionMs: number, durationMs: number) => void;
-  onTrackChange?: (index: number) => void;
+  onTrackChange?: (index: number, item: MediaItem | null) => void;
 };
 
 function songToMediaItem(song: Song): MediaItem {
@@ -80,8 +80,8 @@ class PlayerService {
       ),
       // Cubre tanto el next/previous manual como el auto-avance nativo al
       // terminar una pista.
-      TrackPlayer.addEventListener(Event.MediaItemTransition, ({ index }) => {
-        events.onTrackChange?.(index);
+      TrackPlayer.addEventListener(Event.MediaItemTransition, ({ index, item }) => {
+        events.onTrackChange?.(index, item);
       })
     );
   }
