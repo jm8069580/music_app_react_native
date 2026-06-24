@@ -5,7 +5,7 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$SCRIPT_DIR"
 
-echo "=== MusicApp Tunnel ==="
+echo "=== Melodix Tunnel ==="
 
 # Kill existing processes
 pkill -9 -f "expo start" 2>/dev/null
@@ -46,7 +46,7 @@ except: pass
 
 echo ""
 echo "=============================================="
-echo "  App:       MusicApp"
+echo "  App:       Melodix"
 echo "  Metro:     http://localhost:8081"
 echo "  Tunnel:    $TUNNEL_URL"
 echo ""

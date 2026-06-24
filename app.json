@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "MusicApp",
-    "slug": "musicapp",
+    "name": "Melodix",
+    "slug": "melodix",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,10 +13,11 @@
       "backgroundColor": "#0a0a0a"
     },
     "android": {
-      "package": "com.juanquiroz.musicapp",
+      "package": "com.juanquiroz.melodix",
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundColor": "#0a0a0a"
+        "backgroundColor": "#0a0a0a",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "permissions": [
         "android.permission.READ_MEDIA_AUDIO",

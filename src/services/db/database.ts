@@ -6,7 +6,7 @@ let serialQueue = Promise.resolve();
 export function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (!dbPromise) {
     dbPromise = (async () => {
-      const db = await SQLite.openDatabaseAsync('musicapp.db');
+      const db = await SQLite.openDatabaseAsync('melodix.db');
       await runMigrations(db);
       return wrap(db);
     })();
