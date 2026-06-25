@@ -14,8 +14,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useProgress } from '@rntp/player';
+import { useProgress, useIsPlaying } from '@rntp/player';
 
+import { usePlayerStore } from '../../services/player/playerStore';
 import { getSongById, updateLyrics } from '../../services/db/songsRepository';
 import { isLrcFormat, parseLrc, getCurrentLineIndex, type LrcLine } from '../../utils/lrcParser';
 
@@ -25,8 +26,13 @@ export default function LyricsScreen() {
   const insets = useSafeAreaInsets();
   const { songId, title } = route.params as { songId: number; title: string };
 
-  const { position } = useProgress();
+  const { position, duration } = useProgress();
   const positionMs = position * 1000;
+
+  const isPlaying = useIsPlaying();
+  const play = usePlayerStore((s) => s.play);
+  const pause = usePlayerStore((s) => s.pause);
+  const progress = duration > 0 ? Math.min(1, position / duration) : 0;
 
   const [lyrics, setLyrics] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -134,7 +140,7 @@ export default function LyricsScreen() {
         <ActivityIndicator color="#1db954" style={{ marginTop: 40 }} />
       ) : editing ? (
         <TextInput
-          style={styles.input}
+          style={[styles.input, { paddingBottom: insets.bottom + 24 }]}
           value={draft}
           onChangeText={setDraft}
           placeholder="Pega o escribe aquí la letra..."
@@ -144,11 +150,11 @@ export default function LyricsScreen() {
           textAlignVertical="top"
         />
       ) : lyrics && isLrc ? (
-        <ScrollView ref={scrollRef} contentContainerStyle={styles.lrcWrap}>
+        <ScrollView ref={scrollRef} contentContainerStyle={[styles.lrcWrap, { paddingBottom: insets.bottom + 80 }]}>
           {lrcLines.map((line, idx) => renderLrcLine(line, idx))}
         </ScrollView>
       ) : lyrics ? (
-        <ScrollView contentContainerStyle={styles.lyricsWrap}>
+        <ScrollView contentContainerStyle={[styles.lyricsWrap, { paddingBottom: insets.bottom + 80 }]}>
           <Text style={styles.lyrics}>{lyrics}</Text>
         </ScrollView>
       ) : (
@@ -161,6 +167,28 @@ export default function LyricsScreen() {
             <Text style={styles.addBtnText}>Añadir letra</Text>
           </TouchableOpacity>
         </View>
+      )}
+
+      {!editing && !loading && (
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => navigation.goBack()}
+          style={[styles.bar, { paddingBottom: insets.bottom + 8 }]}
+        >
+          <View style={styles.barProgressTrack}>
+            <View style={[styles.barProgressFill, { width: `${progress * 100}%` }]} />
+          </View>
+          <View style={styles.barRow}>
+            <Text style={styles.barTitle} numberOfLines={1}>{title}</Text>
+            <TouchableOpacity
+              onPress={() => (isPlaying ? pause() : play())}
+              hitSlop={12}
+              style={styles.barControl}
+            >
+              <Ionicons name={isPlaying ? 'pause' : 'play'} size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       )}
     </KeyboardAvoidingView>
   );
@@ -240,4 +268,36 @@ const styles = StyleSheet.create({
   lrcTextPast: {
     color: '#666',
   },
+
+  bar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(11,11,11,0.85)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    paddingTop: 8,
+  },
+  barProgressTrack: {
+    height: 2,
+    marginHorizontal: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 1,
+    overflow: 'hidden',
+  },
+  barProgressFill: {
+    height: 2,
+    backgroundColor: '#fff',
+  },
+  barRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    gap: 12,
+  },
+  barTitle: { color: '#bbb', fontSize: 13, flex: 1 },
+  barControl: { padding: 4 },
 });

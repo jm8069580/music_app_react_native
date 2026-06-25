@@ -31,6 +31,7 @@ function PlaylistsStack() {
 function MainTabs() {
     const insets = useSafeAreaInsets();
     return (
+        <View style={{ flex: 1 }}>
         <Tab.Navigator
             screenOptions={({ route }) => ({
                 headerStyle: { backgroundColor: '#0a0a0a' },
@@ -63,6 +64,8 @@ function MainTabs() {
             <Tab.Screen name="Favoritos" component={FavoritesScreen} />
             <Tab.Screen name="Ajustes" component={SettingsScreen} />
         </Tab.Navigator>
+        <MiniPlayer />
+        </View>
     );
 }
 
@@ -82,7 +85,6 @@ export default function RootNavigator() {
                         options={{ presentation: 'modal' }}
                     />
                 </Stack.Navigator>
-                <MiniPlayer />
             </NavigationContainer>
         </View>
     );
