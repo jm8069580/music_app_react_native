@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePlayerStore } from '../../services/player/playerStore';
 import { useFavoritesStore, useIsFavorite } from '../../services/player/favoritesStore';
 import { useProgress, useIsPlaying } from '@rntp/player';
@@ -9,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 const { height } = Dimensions.get('window');
 
 export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(height)).current;
   useEffect(() => {
     Animated.timing(translateY, { toValue: 0, duration: 300, useNativeDriver: true }).start();
@@ -43,7 +45,7 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   return (
-    <Animated.View style={[styles.container, { transform: [{ translateY }] }]}>
+    <Animated.View style={[styles.container, { transform: [{ translateY }], paddingBottom: insets.bottom }]}>
       <TouchableOpacity style={styles.close} onPress={() => navigation.goBack()}>
         <Ionicons name="chevron-down" size={28} color="#fff" />
       </TouchableOpacity>
