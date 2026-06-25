@@ -24,6 +24,8 @@ import {
 import { usePlayerStore } from '../../services/player/playerStore';
 import type { Song } from '../../types/song';
 
+const MINI_PLAYER_COMPACT_HEIGHT = 56;
+
 export default function PlaylistDetailScreen() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,6 +117,9 @@ export default function PlaylistDetailScreen() {
           data={songs}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
+          contentContainerStyle={{
+            paddingBottom: currentSong ? MINI_PLAYER_COMPACT_HEIGHT + 12 : 0,
+          }}
         />
       )}
     </View>
