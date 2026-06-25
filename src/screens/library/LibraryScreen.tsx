@@ -35,6 +35,8 @@ function HeartButton({ songId }: { songId: number }) {
   );
 }
 
+const MINI_PLAYER_HEIGHT = 64;
+
 const SORT_OPTIONS: { key: SortField; label: string }[] = [
   { key: 'title', label: 'Título' },
   { key: 'artist', label: 'Artista' },
@@ -201,6 +203,9 @@ export default function LibraryScreen() {
           data={filtered}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
+          contentContainerStyle={{
+            paddingBottom: currentSong ? MINI_PLAYER_HEIGHT + 12 : 0,
+          }}
           removeClippedSubviews
           windowSize={7}
           maxToRenderPerBatch={15}
