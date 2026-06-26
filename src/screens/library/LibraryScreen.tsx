@@ -129,7 +129,10 @@ export default function LibraryScreen() {
         )}
       </View>
       <View style={styles.info}>
-        <Text style={[styles.title, isActive && styles.titleActive]} numberOfLines={1}>{item.title}</Text>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, isActive && styles.titleActive]} numberOfLines={1}>{item.title}</Text>
+          {item.lyrics && <Ionicons name="document-text-outline" size={14} color="#1db954" style={styles.lyricsIcon} />}
+        </View>
         <Text style={styles.subtitle} numberOfLines={1}>
           {item.artist ?? 'Desconocido'}
         </Text>
@@ -265,6 +268,8 @@ const styles = StyleSheet.create({
   },
   titleActive: { color: '#1db954' },
   info: { flex: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center' },
+  lyricsIcon: { marginLeft: 6 },
   heart: { padding: 6 },
   more: { padding: 6 },
   title: { color: '#fff', fontSize: 15, fontWeight: '500' },
