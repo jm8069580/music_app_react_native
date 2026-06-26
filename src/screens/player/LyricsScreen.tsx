@@ -12,7 +12,7 @@ import {
   LayoutChangeEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useProgress, useIsPlaying } from '@rntp/player';
 
@@ -22,10 +22,9 @@ import { isLrcFormat, parseLrc, getCurrentLineIndex, type LrcLine } from '../../
 
 export default function LyricsScreen() {
   const navigation = useNavigation<any>();
-  const route = useRoute<any>();
   const insets = useSafeAreaInsets();
-  const { songId, title } = route.params as { songId: number; title: string };
 
+  const currentSong = usePlayerStore((s) => s.currentSong);
   const { position, duration } = useProgress();
   const positionMs = position * 1000;
 
@@ -53,15 +52,22 @@ export default function LyricsScreen() {
     return getCurrentLineIndex(lrcLines, positionMs);
   }, [lrcLines, positionMs]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (songId: number) => {
+    setLoading(true);
+    setEditing(false);
+    setDraft('');
     const song = await getSongById(songId);
     setLyrics(song?.lyrics ?? null);
     setLoading(false);
-  }, [songId]);
+  }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!currentSong) {
+      navigation.goBack();
+      return;
+    }
+    load(currentSong.id);
+  }, [currentSong?.id, load, navigation]);
 
   useEffect(() => {
     if (!lrcLines || editing || currentIdx < 0) return;
@@ -75,14 +81,16 @@ export default function LyricsScreen() {
   };
 
   const startEdit = () => {
+    if (!currentSong) return;
     setDraft(lyrics ?? '');
     setEditing(true);
   };
 
   const handleSave = async () => {
+    if (!currentSong) return;
     setSaving(true);
     const value = draft.trim().length > 0 ? draft : null;
-    await updateLyrics(songId, value);
+    await updateLyrics(currentSong.id, value);
     setLyrics(value);
     setEditing(false);
     setSaving(false);
@@ -124,7 +132,7 @@ export default function LyricsScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10}>
           <Ionicons name="chevron-down" size={26} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{currentSong?.title ?? ''}</Text>
         {editing ? (
           <TouchableOpacity onPress={handleSave} hitSlop={10} disabled={saving}>
             <Text style={styles.save}>{saving ? '...' : 'Guardar'}</Text>
@@ -179,7 +187,7 @@ export default function LyricsScreen() {
             <View style={[styles.barProgressFill, { width: `${progress * 100}%` }]} />
           </View>
           <View style={styles.barRow}>
-            <Text style={styles.barTitle} numberOfLines={1}>{title}</Text>
+            <Text style={styles.barTitle} numberOfLines={1}>{currentSong?.title ?? ''}</Text>
             <TouchableOpacity
               onPress={() => (isPlaying ? pause() : play())}
               hitSlop={12}
