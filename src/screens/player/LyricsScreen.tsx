@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useProgress, useIsPlaying } from '@rntp/player';
+import Slider from '@react-native-community/slider';
 
 import { usePlayerStore } from '../../services/player/playerStore';
 import { getSongById, updateLyrics } from '../../services/db/songsRepository';
@@ -31,6 +32,7 @@ export default function LyricsScreen() {
   const isPlaying = useIsPlaying();
   const play = usePlayerStore((s) => s.play);
   const pause = usePlayerStore((s) => s.pause);
+  const seekTo = usePlayerStore((s) => s.seekTo);
   const progress = duration > 0 ? Math.min(1, position / duration) : 0;
 
   const [lyrics, setLyrics] = useState<string | null>(null);
@@ -178,15 +180,18 @@ export default function LyricsScreen() {
       )}
 
       {!editing && !loading && (
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => navigation.goBack()}
-          style={[styles.bar, { paddingBottom: insets.bottom + 8 }]}
-        >
-          <View style={styles.barProgressTrack}>
-            <View style={[styles.barProgressFill, { width: `${progress * 100}%` }]} />
-          </View>
+        <View style={[styles.bar, { paddingBottom: insets.bottom + 8 }]}>
+          <Slider
+            style={{ width: '100%', height: 20 }}
+            value={position}
+            minimumValue={0}
+            maximumValue={Math.max(duration, 1)}
+            minimumTrackTintColor="#1DB954"
+            maximumTrackTintColor="#444"
+            onSlidingComplete={(val) => seekTo(Math.round(val * 1000))}
+          />
           <View style={styles.barRow}>
+            <Text style={styles.barTime}>{formatTime(position)}</Text>
             <Text style={styles.barTitle} numberOfLines={1}>{currentSong?.title ?? ''}</Text>
             <TouchableOpacity
               onPress={() => (isPlaying ? pause() : play())}
@@ -196,7 +201,7 @@ export default function LyricsScreen() {
               <Ionicons name={isPlaying ? 'pause' : 'play'} size={24} color="#fff" />
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </View>
       )}
     </KeyboardAvoidingView>
   );
@@ -205,6 +210,13 @@ export default function LyricsScreen() {
 function formatTimestamp(ms: number): string {
   const m = Math.floor(ms / 60000);
   const s = Math.floor((ms % 60000) / 1000);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function formatTime(seconds: number): string {
+  const total = Math.floor(seconds || 0);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
@@ -285,27 +297,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(11,11,11,0.85)',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.08)',
-    paddingTop: 8,
-  },
-  barProgressTrack: {
-    height: 2,
-    marginHorizontal: 16,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 1,
-    overflow: 'hidden',
-  },
-  barProgressFill: {
-    height: 2,
-    backgroundColor: '#fff',
+    paddingTop: 0,
+    paddingHorizontal: 8,
   },
   barRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: 8,
     gap: 12,
   },
-  barTitle: { color: '#bbb', fontSize: 13, flex: 1 },
+  barTime: { color: '#888', fontSize: 12, minWidth: 36 },
+  barTitle: { color: '#bbb', fontSize: 13, flex: 1, textAlign: 'center' },
   barControl: { padding: 4 },
 });
