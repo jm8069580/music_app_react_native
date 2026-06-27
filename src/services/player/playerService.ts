@@ -40,11 +40,10 @@ class PlayerService {
     if (this.isSetup) return;
 
     try {
-      TrackPlayer.setupPlayer({
+      await TrackPlayer.setupPlayer({
         contentType: 'music',
         handleAudioBecomingNoisy: true,
         android: {
-          // Mantiene la CPU despierta para reproducción de archivos locales.
           wakeMode: 'local',
         },
       });
@@ -87,8 +86,8 @@ class PlayerService {
   }
 
   async loadQueue(songs: Song[], startIndex: number): Promise<void> {
-    TrackPlayer.setMediaItems(songs.map(songToMediaItem), startIndex);
-    TrackPlayer.play();
+    await TrackPlayer.setMediaItems(songs.map(songToMediaItem), startIndex);
+    await TrackPlayer.play();
   }
 
   /**
@@ -101,8 +100,8 @@ class PlayerService {
     startIndex: number,
     positionMs: number
   ): Promise<void> {
-    TrackPlayer.setMediaItems(songs.map(songToMediaItem), startIndex);
-    if (positionMs > 0) TrackPlayer.seekTo(positionMs / 1000);
+    await TrackPlayer.setMediaItems(songs.map(songToMediaItem), startIndex);
+    if (positionMs > 0) await TrackPlayer.seekTo(positionMs / 1000);
   }
 
   play() {
@@ -121,8 +120,8 @@ class PlayerService {
     TrackPlayer.skipToPrevious();
   }
 
-  skipToIndex(index: number) {
-    TrackPlayer.skipToIndex(index);
+  async skipToIndex(index: number) {
+    await TrackPlayer.skipToIndex(index);
   }
 
   seekToMs(ms: number) {

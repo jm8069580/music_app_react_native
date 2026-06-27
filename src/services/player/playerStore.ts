@@ -31,8 +31,8 @@ type PlayerState = {
   play: () => void;
   pause: () => void;
   togglePlay: () => void;
-  next: () => void;
-  previous: () => void;
+  next: () => Promise<void>;
+  previous: () => Promise<void>;
   seekTo: (ms: number) => void;
   setLoading: (v: boolean) => void;
   toggleShuffle: () => void;
@@ -153,13 +153,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     else get().play();
   },
 
-  next: () => {
+  next: async () => {
     const st = get();
     const { queue, currentIndex, shuffle, shuffledIndices, repeat } = st;
     if (queue.length === 0 || currentIndex == null) return;
 
     if (repeat === 'one') {
-      playerService.skipToIndex(currentIndex);
+      await playerService.skipToIndex(currentIndex);
       return;
     }
 
@@ -172,14 +172,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           const newShuffle = shuffleIndices(queue.length);
           nextIdx = newShuffle[0];
           set({ shuffledIndices: newShuffle, posInShuffled: 0 });
-          playerService.skipToIndex(nextIdx);
+          await playerService.skipToIndex(nextIdx);
           set(goToIndex(nextIdx, { ...st, shuffledIndices: newShuffle, posInShuffled: 0 }));
           return;
         }
         return;
       }
       nextIdx = shuffledIndices[nextPos];
-      playerService.skipToIndex(nextIdx);
+      await playerService.skipToIndex(nextIdx);
       set(goToIndex(nextIdx, { ...st, posInShuffled: nextPos }));
       return;
     }
@@ -192,17 +192,17 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         return;
       }
     }
-    playerService.skipToIndex(nextIdx);
+    await playerService.skipToIndex(nextIdx);
     set(goToIndex(nextIdx, st));
   },
 
-  previous: () => {
+  previous: async () => {
     const st = get();
     const { queue, currentIndex, shuffle, shuffledIndices, repeat } = st;
     if (queue.length === 0 || currentIndex == null) return;
 
     if (repeat === 'one') {
-      playerService.skipToIndex(currentIndex);
+      await playerService.skipToIndex(currentIndex);
       return;
     }
 
@@ -215,14 +215,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           const newShuffle = shuffleIndices(queue.length);
           prevIdx = newShuffle[newShuffle.length - 1];
           set({ shuffledIndices: newShuffle, posInShuffled: newShuffle.length - 1 });
-          playerService.skipToIndex(prevIdx);
+          await playerService.skipToIndex(prevIdx);
           set(goToIndex(prevIdx, { ...st, shuffledIndices: newShuffle, posInShuffled: newShuffle.length - 1 }));
           return;
         }
         return;
       }
       prevIdx = shuffledIndices[prevPos];
-      playerService.skipToIndex(prevIdx);
+      await playerService.skipToIndex(prevIdx);
       set(goToIndex(prevIdx, { ...st, posInShuffled: prevPos }));
       return;
     }
@@ -235,7 +235,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         return;
       }
     }
-    playerService.skipToIndex(prevIdx);
+    await playerService.skipToIndex(prevIdx);
     set(goToIndex(prevIdx, st));
   },
 
