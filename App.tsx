@@ -24,7 +24,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handleAppState = async (next: AppStateStatus) => {
+    const handleAppState = (next: AppStateStatus) => {
       if (next !== 'active') return;
       const st = usePlayerStore.getState();
       if (!st.ready || st.queue.length === 0) return;
@@ -36,8 +36,7 @@ export default function App() {
             currentSong: st.queue[nativeIndex],
           });
         }
-        const playbackState = await TrackPlayer.getPlaybackState();
-        usePlayerStore.setState({ isPlaying: playbackState.isPlaying });
+        usePlayerStore.setState({ isPlaying: TrackPlayer.isPlaying() });
       } catch {
         // player no listo aún
       }

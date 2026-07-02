@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useIsPlaying } from '@rntp/player';
+
 import { usePlayerStore } from '../../services/player/playerStore';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -20,9 +20,8 @@ export const MiniPlayer: React.FC = () => {
   const insets = useSafeAreaInsets();
   const compact = useNavigationState(getActiveRouteName) === 'PlaylistDetail';
   const currentSong = usePlayerStore((s) => s.currentSong);
-  const isPlaying = useIsPlaying();
-  const play = usePlayerStore((s) => s.play);
-  const pause = usePlayerStore((s) => s.pause);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const togglePlay = usePlayerStore((s) => s.togglePlay);
   const loading = usePlayerStore((s) => s.loading);
 
   if (!currentSong) return null;
@@ -46,7 +45,7 @@ export const MiniPlayer: React.FC = () => {
         <Text numberOfLines={1} style={styles.title}>{currentSong.title ?? 'Desconocido'}</Text>
         <Text numberOfLines={1} style={styles.artist}>{currentSong.artist ?? 'Desconocido'}</Text>
       </View>
-      <TouchableOpacity onPress={() => (isPlaying ? pause() : play())} style={styles.control}>
+      <TouchableOpacity onPress={togglePlay} style={styles.control}>
         {loading ? <Ionicons name="ellipsis-horizontal" size={22} color="#fff" /> :
           <Ionicons name={isPlaying ? 'pause' : 'play'} size={22} color="#fff" />}
       </TouchableOpacity>

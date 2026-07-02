@@ -141,9 +141,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     persistState(0);
   },
 
-  play: () => playerService.play(),
+  play: () => {
+    set({ isPlaying: true });
+    playerService.play();
+  },
 
   pause: () => {
+    set({ isPlaying: false });
     playerService.pause();
     persistState(get().positionMillis);
   },

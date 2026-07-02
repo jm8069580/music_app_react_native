@@ -3,7 +3,7 @@ import { View, Text, Image, StyleSheet, TouchableOpacity, Animated, Dimensions }
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePlayerStore } from '../../services/player/playerStore';
 import { useFavoritesStore, useIsFavorite } from '../../services/player/favoritesStore';
-import { useProgress, useIsPlaying } from '@rntp/player';
+import { useProgress } from '@rntp/player';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -18,9 +18,8 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const currentSong = usePlayerStore((s) => s.currentSong);
   const { position, duration } = useProgress();
-  const isPlaying = useIsPlaying();
-  const play = usePlayerStore((s) => s.play);
-  const pause = usePlayerStore((s) => s.pause);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const togglePlay = usePlayerStore((s) => s.togglePlay);
   const next = usePlayerStore((s) => s.next);
   const previous = usePlayerStore((s) => s.previous);
   const seekTo = usePlayerStore((s) => s.seekTo);
@@ -104,7 +103,7 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Ionicons name="play-skip-back" size={36} color="#fff" />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => (isPlaying ? pause() : play())} style={{ marginHorizontal: 36 }}>
+        <TouchableOpacity onPress={togglePlay} style={{ marginHorizontal: 36 }}>
           <Ionicons name={isPlaying ? 'pause-circle' : 'play-circle'} size={64} color="#fff" />
         </TouchableOpacity>
 

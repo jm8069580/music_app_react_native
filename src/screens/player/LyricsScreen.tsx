@@ -14,7 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useProgress, useIsPlaying } from '@rntp/player';
+import { useProgress } from '@rntp/player';
 import Slider from '@react-native-community/slider';
 
 import { usePlayerStore } from '../../services/player/playerStore';
@@ -29,9 +29,8 @@ export default function LyricsScreen() {
   const { position, duration } = useProgress();
   const positionMs = position * 1000;
 
-  const isPlaying = useIsPlaying();
-  const play = usePlayerStore((s) => s.play);
-  const pause = usePlayerStore((s) => s.pause);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const togglePlay = usePlayerStore((s) => s.togglePlay);
   const seekTo = usePlayerStore((s) => s.seekTo);
   const progress = duration > 0 ? Math.min(1, position / duration) : 0;
 
@@ -194,7 +193,7 @@ export default function LyricsScreen() {
             <Text style={styles.barTime}>{formatTime(position)}</Text>
             <Text style={styles.barTitle} numberOfLines={1}>{currentSong?.title ?? ''}</Text>
             <TouchableOpacity
-              onPress={() => (isPlaying ? pause() : play())}
+              onPress={togglePlay}
               hitSlop={12}
               style={styles.barControl}
             >
