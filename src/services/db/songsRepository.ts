@@ -152,6 +152,18 @@ export async function resetMissingArtwork(): Promise<number> {
   return count;
 }
 
+export async function resetAllMetadata(): Promise<number> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ c: number }>(
+    "SELECT COUNT(*) AS c FROM songs WHERE metadata_extracted = 1"
+  );
+  const count = row?.c ?? 0;
+  if (count > 0) {
+    await db.runAsync("UPDATE songs SET metadata_extracted = 0");
+  }
+  return count;
+}
+
 // --- Favoritos ---
 
 export async function getFavoriteSongs(): Promise<Song[]> {
