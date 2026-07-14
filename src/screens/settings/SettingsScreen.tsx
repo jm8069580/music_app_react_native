@@ -14,6 +14,7 @@ import {
   countSongs,
   countSongsWithoutArtwork,
   resetMissingArtwork,
+  resetAllMetadata,
 } from '../../services/db/songsRepository';
 import { metadataService } from '../../services/metadata/metadataBackgroundService';
 
@@ -23,6 +24,7 @@ export default function SettingsScreen() {
   const [pendingArtwork, setPendingArtwork] = useState(0);
   const [refreshingArtwork, setRefreshingArtwork] = useState(false);
   const [artworkProgress, setArtworkProgress] = useState<{ current: number; total: number } | null>(null);
+  const [reExtracting, setReExtracting] = useState(false);
 
   useEffect(() => {
     loadPendingArtwork();
@@ -36,6 +38,7 @@ export default function SettingsScreen() {
         setArtworkProgress(null);
         if (!metadataService.isRunning()) {
           setRefreshingArtwork(false);
+          setReExtracting(false);
           loadPendingArtwork();
         }
       }
@@ -57,6 +60,29 @@ export default function SettingsScreen() {
     setRefreshingArtwork(true);
     setPendingArtwork(count);
     metadataService.start();
+  };
+
+  const handleReExtractAll = async () => {
+    Alert.alert(
+      'Re-extraer todas',
+      'Se volverán a descargar todas las carátulas. Esto puede tardar varios minutos.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Continuar',
+          onPress: async () => {
+            const count = await resetAllMetadata();
+            if (count === 0) {
+              Alert.alert('Sin canciones', 'No hay canciones en la biblioteca.');
+              return;
+            }
+            setReExtracting(true);
+            setPendingArtwork(count);
+            metadataService.start();
+          },
+        },
+      ]
+    );
   };
 
   const handleScan = async () => {
@@ -148,6 +174,29 @@ export default function SettingsScreen() {
       <Text style={styles.hint}>
         Re-extrae las carátulas de las canciones que no tienen. Se procesan en segundo plano.
       </Text>
+
+      <TouchableOpacity
+        style={[styles.button, styles.reExtractButton, (refreshingArtwork || reExtracting) && styles.buttonDisabled]}
+        onPress={handleReExtractAll}
+        disabled={refreshingArtwork || reExtracting}
+      >
+        {reExtracting ? (
+          <View style={styles.scanningContent}>
+            <ActivityIndicator color="#fff" />
+            <Text style={styles.buttonText}>
+              {artworkProgress
+                ? `Re-extrayendo ${artworkProgress.current}/${artworkProgress.total}`
+                : 'Re-extrayendo...'}
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.buttonText}>🔄 Re-extraer todas las carátulas</Text>
+        )}
+      </TouchableOpacity>
+
+      <Text style={styles.hint}>
+        Fuerza la re-extracción de carátulas de TODAS las canciones. Útil si cambiaste la carátula de un archivo externamente.
+      </Text>
     </View>
   );
 }
@@ -165,6 +214,7 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.7 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   artworkButton: { backgroundColor: '#555', marginTop: 24 },
+  reExtractButton: { backgroundColor: '#2a5a3a', marginTop: 24 },
   scanningContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   hint: { color: '#888', fontSize: 14, marginTop: 16, lineHeight: 20 },
 });
