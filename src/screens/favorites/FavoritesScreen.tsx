@@ -109,6 +109,7 @@ export default function FavoritesScreen() {
           data={songs}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: 160 }}
         />
       )}
     </View>
