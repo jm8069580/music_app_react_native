@@ -21,6 +21,7 @@ type PlayerState = {
   ready: boolean;
   shuffle: boolean;
   repeat: RepeatMode;
+  videoMode: boolean;
   /** Índices originales en orden shuffle o null si shuffle está apagado. */
   shuffledIndices: number[] | null;
   posInShuffled: number;
@@ -37,6 +38,7 @@ type PlayerState = {
   setLoading: (v: boolean) => void;
   toggleShuffle: () => void;
   toggleRepeat: () => void;
+  toggleVideoMode: () => void;
 };
 
 function shuffleIndices(n: number): number[] {
@@ -72,6 +74,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   ready: false,
   shuffle: false,
   repeat: 'off',
+  videoMode: false,
   shuffledIndices: null,
   posInShuffled: 0,
 
@@ -135,6 +138,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       loading: false,
       shuffle: false,
       repeat: 'off',
+      videoMode: false,
       shuffledIndices: null,
       posInShuffled: 0,
     });
@@ -265,6 +269,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const st = get();
     const cur = cycle.indexOf(st.repeat);
     set({ repeat: cycle[(cur + 1) % cycle.length] });
+  },
+
+  toggleVideoMode: () => {
+    const st = get();
+    const newMode = !st.videoMode;
+    set({ videoMode: newMode });
+    if (newMode) {
+      playerService.pause();
+      set({ isPlaying: false });
+    } else {
+      playerService.play();
+      set({ isPlaying: true });
+    }
   },
 }));
 
