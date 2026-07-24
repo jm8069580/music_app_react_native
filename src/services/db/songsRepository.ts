@@ -200,3 +200,17 @@ export async function setFavorite(id: number, favorite: boolean): Promise<void> 
     id,
   ]);
 }
+
+// --- Videos ---
+
+export async function updateVideoUri(id: number, videoUri: string | null): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('UPDATE songs SET video_uri = ? WHERE id = ?', [videoUri, id]);
+}
+
+export async function getAllSongsTitleUri(): Promise<{ id: number; title: string; uri: string }[]> {
+  const db = await getDatabase();
+  return db.getAllAsync<{ id: number; title: string; uri: string }>(
+    'SELECT id, title, uri FROM songs'
+  );
+}
