@@ -279,13 +279,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const st = get();
     const newMode = !st.videoMode;
     if (newMode) {
-      // Entrando a video: pausar audio (RNTP conserva la posición)
       playerService.pause();
-      set({ videoMode: true, isPlaying: false });
+      set({ videoMode: true, isPlaying: false, videoPositionMillis: 0 });
     } else {
-      // Volviendo a música: reanudar audio desde donde quedó
       playerService.play();
-      set({ videoMode: false, isPlaying: true, videoPositionMillis: st.videoPositionMillis });
+      set({ videoMode: false, isPlaying: true });
     }
   },
 
