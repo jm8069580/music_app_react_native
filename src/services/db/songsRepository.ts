@@ -2,9 +2,9 @@ import { getDatabase } from './database';
 import type { Song, NewSong } from '../../types/song';
 import type { SongMetadataUpdate } from '../../types/song';
 
-export async function insertSong(song: NewSong): Promise<void> {
+export async function insertSong(song: NewSong): Promise<boolean> {
   const db = await getDatabase();
-  await db.runAsync(
+  const result = await db.runAsync(
     `INSERT OR IGNORE INTO songs (uri, title, artist, album, duration_ms, artwork_uri, folder, added_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
@@ -18,6 +18,7 @@ export async function insertSong(song: NewSong): Promise<void> {
       song.added_at,
     ]
   );
+  return result.changes > 0;
 }
 
 export type SortField = 'title' | 'artist' | 'album' | 'duration_ms' | 'added_at';
@@ -128,6 +129,17 @@ export async function removeSongsByUris(uris: string[]): Promise<void> {
   const db = await getDatabase();
   const placeholders = uris.map(() => '?').join(',');
   await db.runAsync(`DELETE FROM songs WHERE uri IN (${placeholders})`, uris);
+}
+
+export async function getArtworkUrisByUris(uris: string[]): Promise<string[]> {
+  if (uris.length === 0) return [];
+  const db = await getDatabase();
+  const placeholders = uris.map(() => '?').join(',');
+  const rows = await db.getAllAsync<{ artwork_uri: string | null }>(
+    `SELECT artwork_uri FROM songs WHERE uri IN (${placeholders}) AND artwork_uri IS NOT NULL`,
+    uris
+  );
+  return rows.map((r) => r.artwork_uri).filter((u): u is string => u != null);
 }
 
 export async function countSongsWithoutArtwork(): Promise<number> {

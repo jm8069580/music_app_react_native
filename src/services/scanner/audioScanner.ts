@@ -1,5 +1,6 @@
 import * as MediaLibrary from 'expo-media-library/legacy';
-import { insertSong, getAllUris, removeSongsByUris } from '../db/songsRepository';
+import { insertSong, getAllUris, removeSongsByUris, getArtworkUrisByUris } from '../db/songsRepository';
+import { deleteArtwork } from '../storage/artworkStorage';
 
 export type ScanResult = {
   totalFound: number;
@@ -60,7 +61,7 @@ export async function scanAudioLibrary(
     const folder = extractFolder(asset.uri);
     const durationSec = asset.duration ?? 0;
 
-    await insertSong({
+    const isNew = await insertSong({
       uri: asset.uri,
       title: asset.filename.replace(/\.mp3$/i, ''),
       artist: null,
@@ -71,7 +72,7 @@ export async function scanAudioLibrary(
       added_at: now,
     });
 
-    inserted++;
+    if (isNew) inserted++;
     onProgress?.(i + 1, mp3Assets.length);
   }
 
@@ -80,6 +81,8 @@ export async function scanAudioLibrary(
   const dbUris = await getAllUris();
   const orphaned = dbUris.filter((uri) => !scannedUris.has(uri));
   if (orphaned.length > 0) {
+    const orphanArtworks = await getArtworkUrisByUris(orphaned);
+    await Promise.all(orphanArtworks.map((uri) => deleteArtwork(uri)));
     await removeSongsByUris(orphaned);
   }
 
