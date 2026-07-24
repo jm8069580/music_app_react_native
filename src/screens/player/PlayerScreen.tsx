@@ -84,7 +84,7 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       </View>
 
       {videoMode && currentSong.video_uri ? (
-        <VideoPlayer videoUri={currentSong.video_uri} />
+        <VideoPlayer key={currentSong.id} videoUri={currentSong.video_uri} />
       ) : (
         <Image source={artwork} style={styles.art} />
       )}

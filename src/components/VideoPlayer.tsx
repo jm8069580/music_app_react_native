@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { usePlayerStore } from '../services/player/playerStore';
@@ -16,29 +16,23 @@ export default function VideoPlayer({ videoUri }: Props) {
     player.staysActiveInBackground = false;
   });
 
-  const prevUriRef = useRef<string | null>(null);
-
   useEffect(() => {
     if (!videoMode) {
       videoPlayer.pause();
       return;
     }
-    if (prevUriRef.current !== videoUri) {
-      videoPlayer.currentTime = 0;
-      prevUriRef.current = videoUri;
-    }
+    videoPlayer.currentTime = 0;
     videoPlayer.play();
   }, [videoMode, videoUri]);
 
   useEffect(() => {
-    if (videoMode) {
-      if (isPlaying) {
-        videoPlayer.play();
-      } else {
-        videoPlayer.pause();
-      }
+    if (!videoMode) return;
+    if (isPlaying) {
+      videoPlayer.play();
+    } else {
+      videoPlayer.pause();
     }
-  }, [isPlaying, videoMode]);
+  }, [isPlaying]);
 
   if (!videoMode) return null;
 
