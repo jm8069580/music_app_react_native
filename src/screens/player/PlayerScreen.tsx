@@ -6,6 +6,7 @@ import { useFavoritesStore, useIsFavorite } from '../../services/player/favorite
 import { useProgress } from '@rntp/player';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
+import VideoPlayer from '../../components/VideoPlayer';
 
 const { height } = Dimensions.get('window');
 
@@ -27,6 +28,8 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const repeat = usePlayerStore((s) => s.repeat);
   const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
   const toggleRepeat = usePlayerStore((s) => s.toggleRepeat);
+  const videoMode = usePlayerStore((s) => s.videoMode);
+  const toggleVideoMode = usePlayerStore((s) => s.toggleVideoMode);
   const toggleFavorite = useFavoritesStore((s) => s.toggle);
   const isFavorite = useIsFavorite(currentSong?.id);
 
@@ -35,6 +38,7 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }
 
   const artwork = currentSong.artwork_uri ? { uri: currentSong.artwork_uri } : require('../../../assets/default_artwork.png');
+  const hasVideo = !!currentSong.video_uri;
 
   const format = (sec: number) => {
     const total = Math.floor(sec || 0);
@@ -62,7 +66,28 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <Ionicons name="document-text-outline" size={24} color="#fff" />
       </TouchableOpacity>
 
-      <Image source={artwork} style={styles.art} />
+      <View style={styles.mediaToggle}>
+        <TouchableOpacity onPress={() => { if (videoMode) toggleVideoMode(); }} hitSlop={8}>
+          <Ionicons
+            name="musical-notes"
+            size={22}
+            color={!videoMode ? '#1db954' : '#888'}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => { if (!videoMode && hasVideo) toggleVideoMode(); }} hitSlop={8} disabled={!hasVideo}>
+          <Ionicons
+            name="videocam"
+            size={22}
+            color={videoMode ? '#1db954' : hasVideo ? '#888' : '#444'}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {videoMode && currentSong.video_uri ? (
+        <VideoPlayer videoUri={currentSong.video_uri} />
+      ) : (
+        <Image source={artwork} style={styles.art} />
+      )}
       <View style={styles.titleRow}>
         <View style={styles.titleSpacer} />
         <Text style={styles.title} numberOfLines={1}>{currentSong.title}</Text>
@@ -140,6 +165,11 @@ const styles = StyleSheet.create({
   },
   close: { position: 'absolute', left: 12, top: 40 },
   lyricsBtn: { position: 'absolute', right: 12, top: 40 },
+  mediaToggle: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 12,
+  },
   art: { width: 280, height: 280, borderRadius: 8, backgroundColor: '#222' },
   titleRow: {
     flexDirection: 'row',
