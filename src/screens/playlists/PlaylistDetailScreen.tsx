@@ -32,7 +32,14 @@ export default function PlaylistDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const insets = useSafeAreaInsets();
-  const { playlistId, name } = route.params as { playlistId: number; name: string };
+  const params = route.params as { playlistId?: number; name?: string } | undefined;
+
+  if (!params?.playlistId || !params?.name) {
+    navigation.goBack();
+    return null;
+  }
+
+  const { playlistId, name } = params;
 
   const load = useCallback(async () => {
     const data = await getPlaylistSongs(playlistId);
