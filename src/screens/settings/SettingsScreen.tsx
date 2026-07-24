@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { scanAudioLibrary } from '../../services/scanner/audioScanner';
+import { scanAndLinkVideos } from '../../services/scanner/videoScanner';
 import {
   countSongs,
   countSongsWithoutArtwork,
@@ -25,6 +26,8 @@ export default function SettingsScreen() {
   const [refreshingArtwork, setRefreshingArtwork] = useState(false);
   const [artworkProgress, setArtworkProgress] = useState<{ current: number; total: number } | null>(null);
   const [reExtracting, setReExtracting] = useState(false);
+  const [scanningVideos, setScanningVideos] = useState(false);
+  const [videoProgress, setVideoProgress] = useState<{ current: number; total: number } | null>(null);
 
   useEffect(() => {
     loadPendingArtwork();
@@ -123,6 +126,25 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleScanVideos = async () => {
+    try {
+      setScanningVideos(true);
+      setVideoProgress(null);
+      const result = await scanAndLinkVideos((current, total) => {
+        setVideoProgress({ current, total });
+      });
+      Alert.alert(
+        '✅ Escaneo de videos completado',
+        `Videos encontrados: ${result.totalVideos}\nVinculados a canciones: ${result.matched}`
+      );
+    } catch (err: any) {
+      Alert.alert('❌ Error', err.message ?? 'Error desconocido al escanear videos');
+    } finally {
+      setScanningVideos(false);
+      setVideoProgress(null);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>⚙️ Ajustes</Text>
@@ -197,6 +219,29 @@ export default function SettingsScreen() {
       <Text style={styles.hint}>
         Fuerza la re-extracción de carátulas de TODAS las canciones. Útil si cambiaste la carátula de un archivo externamente.
       </Text>
+
+      <TouchableOpacity
+        style={[styles.button, styles.videoButton, scanningVideos && styles.buttonDisabled]}
+        onPress={handleScanVideos}
+        disabled={scanningVideos}
+      >
+        {scanningVideos ? (
+          <View style={styles.scanningContent}>
+            <ActivityIndicator color="#fff" />
+            <Text style={styles.buttonText}>
+              {videoProgress
+                ? `Escaneando ${videoProgress.current}/${videoProgress.total}`
+                : 'Escaneando videos...'}
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.buttonText}>🎬 Escanear y vincular videos</Text>
+        )}
+      </TouchableOpacity>
+
+      <Text style={styles.hint}>
+        Busca archivos de video (.mp4, .mkv, .webm) en tu dispositivo y los vincula a las canciones por nombre de archivo.
+      </Text>
     </View>
   );
 }
@@ -215,6 +260,7 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   artworkButton: { backgroundColor: '#555', marginTop: 24 },
   reExtractButton: { backgroundColor: '#2a5a3a', marginTop: 24 },
+  videoButton: { backgroundColor: '#3a2a5a', marginTop: 24 },
   scanningContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   hint: { color: '#888', fontSize: 14, marginTop: 16, lineHeight: 20 },
 });
