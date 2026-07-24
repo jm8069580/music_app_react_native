@@ -164,6 +164,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     if (repeat === 'one') {
       await playerService.skipToIndex(currentIndex);
+      playerService.seekToMs(0);
+      set({ positionMillis: 0 });
       return;
     }
 
@@ -207,6 +209,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     if (repeat === 'one') {
       await playerService.skipToIndex(currentIndex);
+      playerService.seekToMs(0);
+      set({ positionMillis: 0 });
       return;
     }
 
