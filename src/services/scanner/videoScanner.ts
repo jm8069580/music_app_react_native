@@ -26,8 +26,8 @@ type VideoAsset = {
 export async function scanAndLinkVideos(
   onProgress?: (current: number, total: number) => void
 ): Promise<VideoScanResult> {
-  const { status } = await MediaLibrary.requestPermissionsAsync();
-  if (status !== 'granted') {
+  const { status } = await MediaLibrary.requestPermissionsAsync(false, ['video']);
+  if (status !== 'granted' && status !== 'limited') {
     throw new Error('Permiso denegado para acceder a archivos de video.');
   }
 

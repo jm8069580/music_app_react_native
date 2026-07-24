@@ -39,7 +39,8 @@
         }
       ],
       "expo-sqlite",
-      "expo-image"
+      "expo-image",
+      "expo-video"
     ],
     "ios": {
       "bundleIdentifier": "com.juanquiroz.melodix"
