@@ -22,6 +22,7 @@ type PlayerState = {
   shuffle: boolean;
   repeat: RepeatMode;
   videoMode: boolean;
+  videoPositionMillis: number;
   /** Índices originales en orden shuffle o null si shuffle está apagado. */
   shuffledIndices: number[] | null;
   posInShuffled: number;
@@ -39,6 +40,7 @@ type PlayerState = {
   toggleShuffle: () => void;
   toggleRepeat: () => void;
   toggleVideoMode: () => void;
+  updateVideoPosition: (ms: number) => void;
 };
 
 function shuffleIndices(n: number): number[] {
@@ -75,6 +77,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   shuffle: false,
   repeat: 'off',
   videoMode: false,
+  videoPositionMillis: 0,
   shuffledIndices: null,
   posInShuffled: 0,
 
@@ -139,6 +142,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       shuffle: false,
       repeat: 'off',
       videoMode: false,
+      videoPositionMillis: 0,
       shuffledIndices: null,
       posInShuffled: 0,
     });
@@ -274,15 +278,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   toggleVideoMode: () => {
     const st = get();
     const newMode = !st.videoMode;
-    set({ videoMode: newMode });
     if (newMode) {
+      // Entrando a video: pausar audio (RNTP conserva la posición)
       playerService.pause();
-      set({ isPlaying: false });
+      set({ videoMode: true, isPlaying: false });
     } else {
+      // Volviendo a música: reanudar audio desde donde quedó
       playerService.play();
-      set({ isPlaying: true });
+      set({ videoMode: false, isPlaying: true, videoPositionMillis: st.videoPositionMillis });
     }
   },
+
+  updateVideoPosition: (ms) => set({ videoPositionMillis: ms }),
 }));
 
 /**

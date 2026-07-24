@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { VideoView, useVideoPlayer } from 'expo-video';
+import { VideoView, useVideoPlayer, type VideoPlayer as VideoPlayerType } from 'expo-video';
 import { usePlayerStore } from '../services/player/playerStore';
 
 type Props = {
@@ -8,24 +8,36 @@ type Props = {
 };
 
 export default function VideoPlayer({ videoUri }: Props) {
-  const positionMillis = usePlayerStore((s) => s.positionMillis);
   const videoMode = usePlayerStore((s) => s.videoMode);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
-  const videoPlayer = useVideoPlayer(videoUri, (player) => {
-    player.currentTime = positionMillis / 1000;
+  const videoPositionMillis = usePlayerStore((s) => s.videoPositionMillis);
+  const updateVideoPosition = usePlayerStore((s) => s.updateVideoPosition);
+  const hasInitializedRef = useRef(false);
+
+  const onPlayerReady = useCallback((player: VideoPlayerType) => {
     player.showNowPlayingNotification = false;
     player.staysActiveInBackground = false;
+    player.timeUpdateEventInterval = 0.5;
+
+    const sub = player.addListener('timeUpdate', ({ currentTime }) => {
+      updateVideoPosition(Math.round(currentTime * 1000));
+    });
+
+    return () => sub.remove();
+  }, [updateVideoPosition]);
+
+  const videoPlayer = useVideoPlayer(videoUri, (player) => {
+    onPlayerReady(player);
   });
-  const syncedRef = useRef(false);
 
   useEffect(() => {
     if (!videoMode) {
       videoPlayer.pause();
       return;
     }
-    if (!syncedRef.current) {
-      videoPlayer.currentTime = positionMillis / 1000;
-      syncedRef.current = true;
+    if (!hasInitializedRef.current) {
+      videoPlayer.currentTime = videoPositionMillis / 1000;
+      hasInitializedRef.current = true;
     }
     videoPlayer.play();
   }, [videoMode]);
@@ -41,16 +53,7 @@ export default function VideoPlayer({ videoUri }: Props) {
   }, [isPlaying, videoMode]);
 
   useEffect(() => {
-    if (videoMode && positionMillis > 0) {
-      const diff = Math.abs(videoPlayer.currentTime * 1000 - positionMillis);
-      if (diff > 2000) {
-        videoPlayer.currentTime = positionMillis / 1000;
-      }
-    }
-  }, [positionMillis, videoMode]);
-
-  useEffect(() => {
-    syncedRef.current = false;
+    hasInitializedRef.current = false;
   }, [videoUri]);
 
   if (!videoMode) return null;
