@@ -133,9 +133,15 @@ export default function SettingsScreen() {
       const result = await scanAndLinkVideos((current, total) => {
         setVideoProgress({ current, total });
       });
+      const sampleVideos = result.videoNames.slice(0, 5).join(', ');
+      const sampleTitles = result.songTitles.slice(0, 5).join(', ');
+      const sampleAudioFiles = result.songFileNames.slice(0, 5).join(', ');
       Alert.alert(
         '✅ Escaneo de videos completado',
-        `Videos encontrados: ${result.totalVideos}\nVinculados a canciones: ${result.matched}`
+        `Videos encontrados: ${result.totalVideos}\nVinculados: ${result.matched}\n\n` +
+        `Videos (muestra): ${sampleVideos || 'ninguno'}\n` +
+        `Títulos BD (muestra): ${sampleTitles || 'ninguno'}\n` +
+        `Archivos audio (muestra): ${sampleAudioFiles || 'ninguno'}`
       );
     } catch (err: any) {
       Alert.alert('❌ Error', err.message ?? 'Error desconocido al escanear videos');

@@ -6,6 +6,9 @@ const VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.webm', '.mov'];
 export type VideoScanResult = {
   totalVideos: number;
   matched: number;
+  videoNames: string[];
+  songTitles: string[];
+  songFileNames: string[];
 };
 
 type VideoAsset = {
@@ -16,7 +19,9 @@ type VideoAsset = {
 
 /**
  * Escanea videos del dispositivo y los vincula con canciones por nombre de archivo.
- * Matching: el nombre base del video (sin extensión) se compara con el title de la canción.
+ * Intenta dos estrategias de matching:
+ * 1. Nombre del video vs title de la canción (post-ID3)
+ * 2. Nombre del video vs nombre original del archivo de audio (desde la URI)
  */
 export async function scanAndLinkVideos(
   onProgress?: (current: number, total: number) => void
@@ -54,29 +59,58 @@ export async function scanAndLinkVideos(
 
   const songs = await getAllSongsTitleUri();
 
-  const titleToSong = new Map<string, { id: number; title: string }>();
+  // Indexar por título (post-ID3)
+  const titleToSong = new Map<string, number>();
   for (const song of songs) {
-    titleToSong.set(song.title.toLowerCase(), { id: song.id, title: song.title });
+    titleToSong.set(song.title.toLowerCase(), song.id);
+  }
+
+  // Indexar por nombre original del archivo de audio (desde la URI)
+  const audioFilenameToSong = new Map<string, number>();
+  for (const song of songs) {
+    const audioName = getBaseName(extractFilenameFromUri(song.uri));
+    if (audioName) {
+      audioFilenameToSong.set(audioName, song.id);
+    }
   }
 
   let matched = 0;
   for (let i = 0; i < videoAssets.length; i++) {
     const asset = videoAssets[i];
-    const baseName = getBaseName(asset.filename);
-    const song = titleToSong.get(baseName);
+    const videoName = getBaseName(asset.filename);
 
-    if (song) {
-      await updateVideoUri(song.id, asset.uri);
+    // Estrategia 1: matchear por título de canción
+    let songId = titleToSong.get(videoName);
+
+    // Estrategia 2: matchear por nombre original del archivo de audio
+    if (!songId) {
+      songId = audioFilenameToSong.get(videoName);
+    }
+
+    if (songId) {
+      await updateVideoUri(songId, asset.uri);
       matched++;
     }
 
     onProgress?.(i + 1, videoAssets.length);
   }
 
-  return { totalVideos: videoAssets.length, matched };
+  return {
+    totalVideos: videoAssets.length,
+    matched,
+    videoNames: videoAssets.map((a) => getBaseName(a.filename)),
+    songTitles: songs.map((s) => s.title.toLowerCase()),
+    songFileNames: songs.map((s) => getBaseName(extractFilenameFromUri(s.uri))),
+  };
 }
 
 function getBaseName(filename: string): string {
   const lastDot = filename.lastIndexOf('.');
   return lastDot > 0 ? filename.substring(0, lastDot).toLowerCase() : filename.toLowerCase();
+}
+
+function extractFilenameFromUri(uri: string): string {
+  const decoded = decodeURIComponent(uri);
+  const lastSlash = decoded.lastIndexOf('/');
+  return lastSlash >= 0 ? decoded.substring(lastSlash + 1) : decoded;
 }
