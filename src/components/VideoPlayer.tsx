@@ -10,8 +10,6 @@ type Props = {
 
 export default function VideoPlayer({ videoUri }: Props) {
   const videoMode = usePlayerStore((s) => s.videoMode);
-  const isPlaying = usePlayerStore((s) => s.isPlaying);
-
   const videoPlayer = useVideoPlayer(videoUri, (player) => {
     player.showNowPlayingNotification = false;
     player.staysActiveInBackground = false;
@@ -53,15 +51,6 @@ export default function VideoPlayer({ videoUri }: Props) {
     videoPlayer.currentTime = 0;
     videoPlayer.play();
   }, [videoMode, videoUri]);
-
-  useEffect(() => {
-    if (!videoMode) return;
-    if (isPlaying) {
-      videoPlayer.play();
-    } else {
-      videoPlayer.pause();
-    }
-  }, [isPlaying]);
 
   useEffect(() => {
     if (showControls) {
@@ -159,7 +148,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   controlsOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'space-between',
     paddingTop: 10,

@@ -23,7 +23,7 @@ export async function scanAudioLibrary(
 ): Promise<ScanResult> {
   // 1. Permisos
   const { status } = await MediaLibrary.requestPermissionsAsync(false, ['audio']);
-  if (status !== 'granted' && status !== 'limited') {
+  if (status !== 'granted') {
     throw new Error('Permiso denegado para acceder a archivos de audio.');
   }
 
