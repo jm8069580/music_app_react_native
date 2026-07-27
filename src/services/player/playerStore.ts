@@ -280,7 +280,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const newMode = !st.videoMode;
     if (newMode) {
       playerService.pause();
-      set({ videoMode: true, isPlaying: true, videoPositionMillis: 0 });
+      set({ videoMode: true, isPlaying: false, videoPositionMillis: 0 });
     } else {
       playerService.play();
       set({ videoMode: false, isPlaying: true });
