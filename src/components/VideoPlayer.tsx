@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Pressable, Text } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { usePlayerStore } from '../services/player/playerStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -84,16 +84,16 @@ export default function VideoPlayer({ videoUri }: Props) {
   if (!videoMode) return null;
 
   return (
-    <TouchableOpacity
-      activeOpacity={1}
-      style={styles.container}
-      onPress={() => setShowControls((prev) => !prev)}
-    >
+    <View style={styles.container}>
       <VideoView
         player={videoPlayer}
         style={styles.video}
         contentFit="contain"
         nativeControls={false}
+      />
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={() => setShowControls((prev) => !prev)}
       />
       {showControls && (
         <View style={styles.controlsOverlay}>
@@ -131,7 +131,7 @@ export default function VideoPlayer({ videoUri }: Props) {
           </View>
         </View>
       )}
-    </TouchableOpacity>
+    </View>
   );
 }
 
