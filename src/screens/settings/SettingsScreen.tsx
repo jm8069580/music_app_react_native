@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
@@ -156,7 +157,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
       <Text style={styles.title}>⚙️ Ajustes</Text>
 
       <TouchableOpacity
@@ -310,7 +311,7 @@ export default function SettingsScreen() {
       <Text style={styles.hint}>
         Restaura letras desde un backup. Para copiar el archivo al dispositivo: adb push backup.json /sdcard/Download/ y muévelo a la carpeta de datos de la app con adb.
       </Text>
-    </View>
+    </ScrollView>
   );
 }
 
