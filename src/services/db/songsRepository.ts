@@ -68,6 +68,19 @@ export async function getSongById(id: number): Promise<Song | null> {
   return row ?? null;
 }
 
+export async function getSongByUri(uri: string): Promise<Song | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<Song>('SELECT * FROM songs WHERE uri = ?', [uri]);
+  return row ?? null;
+}
+
+export async function getSongsWithLyrics(): Promise<Pick<Song, 'id' | 'uri' | 'title' | 'lyrics'>[]> {
+  const db = await getDatabase();
+  return db.getAllAsync<Pick<Song, 'id' | 'uri' | 'title' | 'lyrics'>>(
+    "SELECT id, uri, title, lyrics FROM songs WHERE lyrics IS NOT NULL AND lyrics != '' ORDER BY title COLLATE NOCASE ASC"
+  );
+}
+
 export async function updateLyrics(id: number, lyrics: string | null): Promise<void> {
   const db = await getDatabase();
   const value = lyrics && lyrics.trim().length > 0 ? lyrics : null;

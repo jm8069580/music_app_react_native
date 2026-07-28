@@ -9,6 +9,7 @@ import {
   Linking,
 } from 'react-native';
 import * as MediaLibrary from 'expo-media-library/legacy';
+import * as FileSystem from 'expo-file-system/legacy';
 import { scanAudioLibrary } from '../../services/scanner/audioScanner';
 import { scanAndLinkVideos } from '../../services/scanner/videoScanner';
 import {
@@ -18,6 +19,7 @@ import {
   resetAllMetadata,
 } from '../../services/db/songsRepository';
 import { metadataService } from '../../services/metadata/metadataBackgroundService';
+import { exportLyricsBackup, importLyricsBackup } from '../../services/backup/lyricsBackup';
 
 export default function SettingsScreen() {
   const [scanning, setScanning] = useState(false);
@@ -28,6 +30,8 @@ export default function SettingsScreen() {
   const [reExtracting, setReExtracting] = useState(false);
   const [scanningVideos, setScanningVideos] = useState(false);
   const [videoProgress, setVideoProgress] = useState<{ current: number; total: number } | null>(null);
+  const [exportingLyrics, setExportingLyrics] = useState(false);
+  const [importingLyrics, setImportingLyrics] = useState(false);
 
   useEffect(() => {
     loadPendingArtwork();
@@ -248,6 +252,64 @@ export default function SettingsScreen() {
       <Text style={styles.hint}>
         Busca archivos de video (.mp4, .mkv, .webm) en tu dispositivo y los vincula a las canciones por nombre de archivo.
       </Text>
+
+      <View style={styles.sectionDivider} />
+      <Text style={styles.sectionTitle}>📝 Letras</Text>
+
+      <TouchableOpacity
+        style={[styles.button, styles.lyricsExportButton, exportingLyrics && styles.buttonDisabled]}
+        onPress={async () => {
+          setExportingLyrics(true);
+          const path = await exportLyricsBackup();
+          setExportingLyrics(false);
+          if (path) {
+            Alert.alert('✅ Exportado', `Backup guardado en:\n${path}\n\nPara descargarlo:\nadb exec-out run-as com.juanquiroz.melodix cat files/melodix-lyrics-backup.json > backup.json`);
+          } else {
+            Alert.alert('Sin letras', 'No hay canciones con letras para exportar.');
+          }
+        }}
+        disabled={exportingLyrics}
+      >
+        <View style={styles.scanningContent}>
+          {exportingLyrics && <ActivityIndicator color="#fff" />}
+          <Text style={styles.buttonText}>
+            {exportingLyrics ? 'Exportando...' : '📤 Exportar letras'}
+          </Text>
+        </View>
+      </TouchableOpacity>
+
+      <Text style={styles.hint}>
+        Guarda todas las letras en un archivo JSON. Para importarlo después, copia el archivo al dispositivo y usa "Importar letras".
+      </Text>
+
+      <TouchableOpacity
+        style={[styles.button, styles.lyricsImportButton, importingLyrics && styles.buttonDisabled]}
+        onPress={async () => {
+          setImportingLyrics(true);
+          const result = await importLyricsBackup();
+          setImportingLyrics(false);
+          if (!result) {
+            Alert.alert('No encontrado', 'No se encontró el archivo de backup. Copia melodix-lyrics-backup.json al dispositivo.');
+            return;
+          }
+          Alert.alert(
+            '✅ Importación completada',
+            `Restauradas: ${result.restored}\nOmitidas: ${result.skipped}\nErrores: ${result.errors}`
+          );
+        }}
+        disabled={importingLyrics}
+      >
+        <View style={styles.scanningContent}>
+          {importingLyrics && <ActivityIndicator color="#fff" />}
+          <Text style={styles.buttonText}>
+            {importingLyrics ? 'Importando...' : '📥 Importar letras'}
+          </Text>
+        </View>
+      </TouchableOpacity>
+
+      <Text style={styles.hint}>
+        Restaura letras desde un backup. Para copiar el archivo al dispositivo: adb push backup.json /sdcard/Download/ y muévelo a la carpeta de datos de la app con adb.
+      </Text>
     </View>
   );
 }
@@ -269,4 +331,8 @@ const styles = StyleSheet.create({
   videoButton: { backgroundColor: '#3a2a5a', marginTop: 24 },
   scanningContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   hint: { color: '#888', fontSize: 14, marginTop: 16, lineHeight: 20 },
+  sectionDivider: { height: 1, backgroundColor: '#222', marginVertical: 28 },
+  sectionTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 16 },
+  lyricsExportButton: { backgroundColor: '#1a5a3a', marginTop: 4 },
+  lyricsImportButton: { backgroundColor: '#3a3a5a', marginTop: 24 },
 });
