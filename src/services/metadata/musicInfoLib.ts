@@ -140,34 +140,40 @@ class Loader {
     return chunk;
   }
 
-  private async readUntilEnd(): Promise<number[]> {
+  private async readUntilEnd(maxLength?: number): Promise<number[]> {
     let byte = 0;
     const chunk: number[] = [];
+    let readCount = 0;
     do {
+      if (maxLength !== undefined && readCount >= maxLength) break;
       if (this.buffer.finished()) {
         if (this.filePosition >= this.dataSize) { this.finished = true; break; }
         await this.loadFileToBuffer();
       }
       byte = this.buffer.getByte();
       chunk.push(byte);
+      readCount++;
     } while (byte !== 0);
     return chunk;
   }
 
-  // Lee de a 2 bytes hasta el terminador UTF-16 (0x00 0x00).
-  private async readUntilDoubleNull(): Promise<number[]> {
+  private async readUntilDoubleNull(maxLength?: number): Promise<number[]> {
     const chunk: number[] = [];
+    let readCount = 0;
     while (true) {
+      if (maxLength !== undefined && readCount >= maxLength) break;
       if (this.buffer.finished()) {
         if (this.filePosition >= this.dataSize) { this.finished = true; break; }
         await this.loadFileToBuffer();
       }
       const b1 = this.buffer.getByte();
+      readCount++;
       if (this.buffer.finished()) {
         if (this.filePosition >= this.dataSize) { chunk.push(b1); this.finished = true; break; }
         await this.loadFileToBuffer();
       }
       const b2 = this.buffer.getByte();
+      readCount++;
       chunk.push(b1, b2);
       if (b1 === 0 && b2 === 0) break;
     }
@@ -179,6 +185,8 @@ class Loader {
     if (this.bytesToString(chunk) !== ID3_TOKEN) throw new InvalidFileException();
     chunk = await this.read(2);
     this.version = this.bytesToInt([chunk[0]]);
+    // ID3v2.2 usa frame IDs de 3 bytes y tamaños de 3 bytes — no soportado.
+    if (this.version < 3) throw new InvalidFileException();
     await this.skip(1);
     chunk = await this.read(4);
     let size = 0;
@@ -230,8 +238,10 @@ class Loader {
     // Descripción: el terminador depende del encoding del frame.
     //   0 = ISO-8859-1, 3 = UTF-8  -> 0x00
     //   1 = UTF-16 (BOM), 2 = UTF-16BE -> 0x00 0x00
+    // Se pasa remaining como límite para no consumir datos de imagen si falta
+    // el terminador (etiqueta malformada).
     const isUtf16 = encoding === 1 || encoding === 2;
-    chunk = isUtf16 ? await this.readUntilDoubleNull() : await this.readUntilEnd();
+    chunk = isUtf16 ? await this.readUntilDoubleNull(remaining) : await this.readUntilEnd(remaining);
     remaining -= chunk.length;
     const description = this.decodeText(chunk, encoding);
 
@@ -337,12 +347,13 @@ class Loader {
     return a;
   }
   private bytesToBase64(bytes: number[]) {
-    // Construir el string binario en bloques con fromCharCode.apply evita el
-    // coste cuadrático de concatenar byte a byte (las carátulas son grandes).
+    const len = bytes.length;
     let s = '';
     const CHUNK = 8192;
-    for (let i = 0; i < bytes.length; i += CHUNK) {
-      s += String.fromCharCode.apply(null, bytes.slice(i, i + CHUNK));
+    for (let i = 0; i < len; i += CHUNK) {
+      const end = Math.min(i + CHUNK, len);
+      const slice = bytes.slice(i, end);
+      s += String.fromCharCode(...slice);
     }
     return encode(s);
   }

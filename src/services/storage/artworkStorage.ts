@@ -2,6 +2,21 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 const ARTWORK_DIR = FileSystem.documentDirectory + 'artwork/';
 
+const MIME_TO_EXT: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/bmp': 'bmp',
+  'image/gif': 'gif',
+  'image/tiff': 'tiff',
+  'image/x-tiff': 'tiff',
+};
+
+function mimeToExt(mime: string): string {
+  return MIME_TO_EXT[mime.toLowerCase()] ?? 'jpg';
+}
+
 async function ensureDir() {
   const info = await FileSystem.getInfoAsync(ARTWORK_DIR);
   if (!info.exists) {
@@ -9,22 +24,17 @@ async function ensureDir() {
   }
 }
 
-/**
- * Limpia y normaliza un string base64:
- * - quita prefijo data:
- * - elimina whitespace
- * - filtra caracteres no permitidos
- * - ajusta padding
- */
-function sanitizeBase64(input: string): string {
+function sanitizeBase64(input: string): string | null {
   let s = input.replace(/^data:image\/\w+;base64,/, '');
-  // Quitar todo lo que no sea válido base64
   s = s.replace(/[^A-Za-z0-9+/=]/g, '');
-  // Ajustar padding a múltiplo de 4
+  if (s.length === 0) return null;
   const mod = s.length % 4;
   if (mod === 2) s += '==';
   else if (mod === 3) s += '=';
-  else if (mod === 1) s = s.slice(0, -1); // descarta byte huérfano
+  else if (mod === 1) {
+    console.warn('[artworkStorage] base64 inválido (longitud mod 1), se omite carátula');
+    return null;
+  }
   return s;
 }
 
@@ -35,14 +45,11 @@ export async function saveArtwork(
 ): Promise<string | null> {
   try {
     await ensureDir();
-    const ext = mimeType.includes('png') ? 'png' : 'jpg';
+    const ext = mimeToExt(mimeType);
     const path = `${ARTWORK_DIR}${songId}.${ext}`;
 
     const clean = sanitizeBase64(base64);
-    if (clean.length < 100) {
-      // Muy pequeño para ser una imagen real
-      return null;
-    }
+    if (!clean || clean.length < 100) return null;
 
     await FileSystem.writeAsStringAsync(path, clean, {
       encoding: FileSystem.EncodingType.Base64,
@@ -50,7 +57,7 @@ export async function saveArtwork(
 
     return path;
   } catch (err) {
-    //console.warn(`[artworkStorage] No se pudo guardar artwork de song ${songId}:`, err);
+    console.warn(`[artworkStorage] Error guardando carátula de song ${songId}:`, err);
     return null;
   }
 }

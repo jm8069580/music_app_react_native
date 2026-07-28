@@ -30,15 +30,21 @@ export async function extractMetadata(
         }
 
         if (info.picture?.pictureData) {
-            const dataUri = info.picture.pictureData;
-            const mimeMatch = dataUri.match(/^data:(image\/\w+);base64,/);
-            const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-            const base64 = dataUri.replace(/^data:image\/\w+;base64,/, '');
-            if (base64.length > 0) {
-                const artworkUri = await saveArtwork(songId, base64, mimeType);
-                if (artworkUri) {
-                    update.artwork_uri = artworkUri;
+            try {
+                const dataUri = info.picture.pictureData;
+                const mimeMatch = dataUri.match(/^data:(image\/\w+);base64,/);
+                const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+                const base64 = dataUri.replace(/^data:image\/\w+;base64,/, '');
+                if (base64.length > 0) {
+                    const artworkUri = await saveArtwork(songId, base64, mimeType);
+                    if (artworkUri) {
+                        update.artwork_uri = artworkUri;
+                    } else {
+                        console.warn(`[metadataExtractor] saveArtwork devolvió null para song ${songId} (mime: ${mimeType}, base64 len: ${base64.length})`);
+                    }
                 }
+            } catch (picErr) {
+                console.warn(`[metadataExtractor] Error procesando picture de song ${songId}:`, picErr);
             }
         }
     } catch (err) {
