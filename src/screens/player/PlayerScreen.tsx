@@ -100,6 +100,7 @@ export const PlayerScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </TouchableOpacity>
       </View>
       <Text style={styles.artist}>{currentSong.artist}</Text>
+      <Text style={styles.album}>{currentSong.album}</Text>
 
       <Slider
         style={{ width: '90%', marginTop: 24 }}
@@ -181,6 +182,7 @@ const styles = StyleSheet.create({
   title: { color: '#fff', fontSize: 20, flex: 1, textAlign: 'center' },
   heart: { padding: 4, width: 34, alignItems: 'flex-end' },
   artist: { color: '#bbb', marginTop: 6 },
+  album: { color: '#777', marginTop: 2, fontSize: 14 },
   times: { width: '90%', flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   timeText: { color: '#888' },
   controls: { flexDirection: 'row', alignItems: 'center', marginTop: 24, gap: 24 },
