@@ -113,6 +113,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       },
     });
     set({ ready: true });
+    playerService.setRepeatMode(get().repeat);
   },
 
   restore: async () => {
@@ -146,6 +147,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       shuffledIndices: null,
       posInShuffled: 0,
     });
+    playerService.setRepeatMode('off');
     persistState(0);
   },
 
@@ -272,7 +274,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const cycle: RepeatMode[] = ['off', 'all', 'one'];
     const st = get();
     const cur = cycle.indexOf(st.repeat);
-    set({ repeat: cycle[(cur + 1) % cycle.length] });
+    const nextMode = cycle[(cur + 1) % cycle.length];
+    set({ repeat: nextMode });
+    playerService.setRepeatMode(nextMode);
   },
 
   toggleVideoMode: () => {

@@ -1,8 +1,10 @@
 import TrackPlayer, {
   Event,
   PlayerCommand,
+  RepeatMode as NativeRepeatMode,
   type MediaItem,
 } from '@rntp/player';
+import type { RepeatMode } from './playerStore';
 import type { Song } from '../../types/song';
 
 /**
@@ -126,6 +128,10 @@ class PlayerService {
 
   seekToMs(ms: number) {
     TrackPlayer.seekTo(ms / 1000);
+  }
+
+  setRepeatMode(mode: RepeatMode) {
+    TrackPlayer.setRepeatMode(mode as NativeRepeatMode);
   }
 }
 
