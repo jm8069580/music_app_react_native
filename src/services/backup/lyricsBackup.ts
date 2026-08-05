@@ -1,6 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { getSongsWithLyrics, getSongByUri, updateLyrics } from '../db/songsRepository';
+import { pickJsonFileFromFolder } from './pickJsonFromFolder';
 
 const BACKUP_FILE = FileSystem.documentDirectory + 'melodix-lyrics-backup.json';
 
@@ -79,10 +80,11 @@ export type ImportResult = {
 export async function importLyricsBackup(fileUri?: string): Promise<ImportResult | null> {
   try {
     const uri = fileUri ?? BACKUP_FILE;
-    const info = await FileSystem.getInfoAsync(uri);
+    const picked = fileUri ? null : await pickJsonFileFromFolder('melodix-lyrics-backup');
+    const info = await FileSystem.getInfoAsync(picked ?? uri);
     if (!info.exists) return null;
 
-    const raw = await FileSystem.readAsStringAsync(uri, {
+    const raw = await FileSystem.readAsStringAsync(picked ?? uri, {
       encoding: FileSystem.EncodingType.UTF8,
     });
     const backup: LyricsBackup = JSON.parse(raw);

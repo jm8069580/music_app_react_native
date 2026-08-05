@@ -8,6 +8,7 @@ import {
   addSongToPlaylist,
 } from '../db/playlistsRepository';
 import { getSongByUri } from '../db/songsRepository';
+import { pickJsonFileFromFolder } from './pickJsonFromFolder';
 
 const BACKUP_FILE = FileSystem.documentDirectory + 'melodix-playlists-backup.json';
 
@@ -91,10 +92,11 @@ export type PlaylistsImportResult = {
 export async function importPlaylistsBackup(fileUri?: string): Promise<PlaylistsImportResult | null> {
   try {
     const uri = fileUri ?? BACKUP_FILE;
-    const info = await FileSystem.getInfoAsync(uri);
+    const picked = fileUri ? null : await pickJsonFileFromFolder('melodix-playlists-backup');
+    const info = await FileSystem.getInfoAsync(picked ?? uri);
     if (!info.exists) return null;
 
-    const raw = await FileSystem.readAsStringAsync(uri, {
+    const raw = await FileSystem.readAsStringAsync(picked ?? uri, {
       encoding: FileSystem.EncodingType.UTF8,
     });
     const backup: PlaylistsBackup = JSON.parse(raw);
