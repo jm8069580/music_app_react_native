@@ -1,7 +1,16 @@
 import * as FileSystem from 'expo-file-system/legacy';
+import { Platform } from 'react-native';
 import { getSongsWithLyrics, getSongByUri, updateLyrics } from '../db/songsRepository';
 
 const BACKUP_FILE = FileSystem.documentDirectory + 'melodix-lyrics-backup.json';
+
+function backupFileName(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `melodix-lyrics-backup-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(
+    d.getDate()
+  )}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.json`;
+}
 
 export type LyricsBackupEntry = {
   uri: string;
@@ -32,7 +41,25 @@ export async function exportLyricsBackup(): Promise<string | null> {
       })),
     };
 
-    await FileSystem.writeAsStringAsync(BACKUP_FILE, JSON.stringify(backup, null, 2), {
+    const json = JSON.stringify(backup, null, 2);
+
+    if (Platform.OS === 'android') {
+      const permissions =
+        await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+      if (permissions.granted && permissions.directoryUri) {
+        const newUri = await FileSystem.StorageAccessFramework.createFileAsync(
+          permissions.directoryUri,
+          backupFileName().replace(/\.json$/, ''),
+          'application/json'
+        );
+        await FileSystem.StorageAccessFramework.writeAsStringAsync(newUri, json, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
+        return newUri;
+      }
+    }
+
+    await FileSystem.writeAsStringAsync(BACKUP_FILE, json, {
       encoding: FileSystem.EncodingType.UTF8,
     });
 
