@@ -32,6 +32,15 @@ export async function getPlaylist(id: number): Promise<Playlist | null> {
   return row ?? null;
 }
 
+export async function getPlaylistByName(name: string): Promise<Playlist | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<Playlist>(
+    'SELECT id, name, created_at FROM playlists WHERE name = ? LIMIT 1',
+    [name.trim()]
+  );
+  return row ?? null;
+}
+
 export async function renamePlaylist(id: number, name: string): Promise<void> {
   const db = await getDatabase();
   await db.runAsync('UPDATE playlists SET name = ? WHERE id = ?', [name.trim(), id]);

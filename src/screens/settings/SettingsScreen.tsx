@@ -21,6 +21,7 @@ import {
 } from '../../services/db/songsRepository';
 import { metadataService } from '../../services/metadata/metadataBackgroundService';
 import { exportLyricsBackup, importLyricsBackup } from '../../services/backup/lyricsBackup';
+import { exportPlaylistsBackup, importPlaylistsBackup } from '../../services/backup/playlistsBackup';
 
 export default function SettingsScreen() {
   const [scanning, setScanning] = useState(false);
@@ -33,6 +34,8 @@ export default function SettingsScreen() {
   const [videoProgress, setVideoProgress] = useState<{ current: number; total: number } | null>(null);
   const [exportingLyrics, setExportingLyrics] = useState(false);
   const [importingLyrics, setImportingLyrics] = useState(false);
+  const [exportingPlaylists, setExportingPlaylists] = useState(false);
+  const [importingPlaylists, setImportingPlaylists] = useState(false);
 
   useEffect(() => {
     loadPendingArtwork();
@@ -264,7 +267,7 @@ export default function SettingsScreen() {
           const path = await exportLyricsBackup();
           setExportingLyrics(false);
           if (path) {
-            Alert.alert('✅ Exportado', `Backup guardado en:\n${path}\n\nPara descargarlo:\nadb exec-out run-as com.juanquiroz.melodix cat files/melodix-lyrics-backup.json > backup.json`);
+            Alert.alert('✅ Exportado', `Backup guardado en:\n${path}`);
           } else {
             Alert.alert('Sin letras', 'No hay canciones con letras para exportar.');
           }
@@ -280,7 +283,7 @@ export default function SettingsScreen() {
       </TouchableOpacity>
 
       <Text style={styles.hint}>
-        Guarda todas las letras en un archivo JSON. Para importarlo después, copia el archivo al dispositivo y usa "Importar letras".
+        Guarda todas las letras en un archivo JSON. En Android elige la carpeta donde guardarlo (por ejemplo, Descargas). Para importarlo después, usa "Importar letras".
       </Text>
 
       <TouchableOpacity
@@ -311,6 +314,64 @@ export default function SettingsScreen() {
       <Text style={styles.hint}>
         Restaura letras desde un backup. Para copiar el archivo al dispositivo: adb push backup.json /sdcard/Download/ y muévelo a la carpeta de datos de la app con adb.
       </Text>
+
+      <View style={styles.sectionDivider} />
+      <Text style={styles.sectionTitle}>📂 Playlists</Text>
+
+      <TouchableOpacity
+        style={[styles.button, styles.playlistsExportButton, exportingPlaylists && styles.buttonDisabled]}
+        onPress={async () => {
+          setExportingPlaylists(true);
+          const path = await exportPlaylistsBackup();
+          setExportingPlaylists(false);
+          if (path) {
+            Alert.alert('✅ Exportado', `Backup de playlists guardado en:\n${path}`);
+          } else {
+            Alert.alert('Sin playlists', 'No hay playlists para exportar.');
+          }
+        }}
+        disabled={exportingPlaylists}
+      >
+        <View style={styles.scanningContent}>
+          {exportingPlaylists && <ActivityIndicator color="#fff" />}
+          <Text style={styles.buttonText}>
+            {exportingPlaylists ? 'Exportando...' : '📤 Exportar playlists'}
+          </Text>
+        </View>
+      </TouchableOpacity>
+
+      <Text style={styles.hint}>
+        Guarda tus listas de reproducción con sus canciones en un archivo JSON.
+      </Text>
+
+      <TouchableOpacity
+        style={[styles.button, styles.playlistsImportButton, importingPlaylists && styles.buttonDisabled]}
+        onPress={async () => {
+          setImportingPlaylists(true);
+          const result = await importPlaylistsBackup();
+          setImportingPlaylists(false);
+          if (!result) {
+            Alert.alert('No encontrado', 'No se encontró el archivo de backup de playlists.');
+            return;
+          }
+          Alert.alert(
+            '✅ Importación completada',
+            `Canciones restauradas: ${result.restored}\nOmitidas (no existen): ${result.omittedSongs}\nPlaylists omitidas: ${result.omittedPlaylists}\nErrores: ${result.errors}`
+          );
+        }}
+        disabled={importingPlaylists}
+      >
+        <View style={styles.scanningContent}>
+          {importingPlaylists && <ActivityIndicator color="#fff" />}
+          <Text style={styles.buttonText}>
+            {importingPlaylists ? 'Importando...' : '📥 Importar playlists'}
+          </Text>
+        </View>
+      </TouchableOpacity>
+
+      <Text style={styles.hint}>
+        Restaura playlists desde un backup. Las canciones que sigan en el dispositivo se añaden; las que ya no existan se omiten.
+      </Text>
     </ScrollView>
   );
 }
@@ -336,4 +397,6 @@ const styles = StyleSheet.create({
   sectionTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 16 },
   lyricsExportButton: { backgroundColor: '#1a5a3a', marginTop: 4 },
   lyricsImportButton: { backgroundColor: '#3a3a5a', marginTop: 24 },
+  playlistsExportButton: { backgroundColor: '#5a3a1a', marginTop: 4 },
+  playlistsImportButton: { backgroundColor: '#2a3a5a', marginTop: 24 },
 });
